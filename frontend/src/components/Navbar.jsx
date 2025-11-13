@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth'; // <-- ✅ CORRECTED IMPORT PATH
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuth(); // This will now work
 
   const isAdmin = user && user.role === 'Admin';
   const canOrganize = user && (user.role.includes('Organizer') || isAdmin);
@@ -34,7 +34,6 @@ export default function Navbar() {
                 Add Event
               </Link>
             )}
-            {/* Link to resources is now on the Organizer Dashboard, not Navbar */}
             <button onClick={logout} className='text-gray-300 hover:text-white'>
               Logout
             </button>
@@ -54,7 +53,7 @@ export default function Navbar() {
   );
 }
 
-// Helper component
+// Helper component for NavLinks
 const NavButton = ({ to, children }) => (
   <li>
     <NavLink

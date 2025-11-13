@@ -104,7 +104,7 @@ export default function EventDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-8">
+    <div className="min-h-screen bg-linear-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-8">
       <div className="max-w-7xl mx-auto">
         
         {/* --- Event Header --- */}
@@ -114,7 +114,7 @@ export default function EventDashboard() {
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">{event.eventName}</h1>
             <p className="text-xl text-gray-300 max-w-3xl">{event.eventDesc}</p>
             <div className="flex flex-wrap gap-4 mt-6">
-              <Link to={`/events/${id}/register`} className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-xl font-semibold text-lg hover:scale-105 transition-transform">
+              <Link to={`/events/${id}/register`} className="bg-linear-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-xl font-semibold text-lg hover:scale-105 transition-transform">
                 Register Now
               </Link>
               <Link to="/events" className="bg-white/10 text-white px-8 py-3 rounded-xl font-semibold hover:bg-white/20 transition-all">
