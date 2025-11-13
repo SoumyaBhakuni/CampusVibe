@@ -3,7 +3,7 @@ import db from '../models/index.js';
 import { 
   sendCertificateEmail, 
   sendFinalReportEmail,
-  sendAccessWarningEmail
+  sendAccessWarningEmail // This import will now work
 } from '../utils/mailer.js';
 
 // =================================================================
@@ -40,7 +40,11 @@ export const runOffboardingScript = async () => {
 
         const allMembers = await db.EventMember.findAll({
           where: { eventId: event.id }, // Get ALL members
-          include: [db.Student, db.Employee, db.Team],
+          include: [
+            { model: db.Student, include: [db.Course] }, 
+            db.Employee, 
+            db.Team
+          ],
           transaction: t
         });
         
@@ -61,7 +65,8 @@ export const runOffboardingScript = async () => {
               if (member.role === 'Student Organiser') certType = 'Certificate of Leadership';
 
               if (certType) {
-                // await sendCertificateEmail(student.email, student.name, certType, event.eventName);
+                // ✅ UN-COMMENTED
+                await sendCertificateEmail(student.email, student.name, certType, event.eventName);
               }
             }
           }
@@ -69,8 +74,9 @@ export const runOffboardingScript = async () => {
 
         // 5. Send Final Report (to Admin & Organizer)
         const reportData = { eventName: event.eventName, participants: allMembers.length };
-        // await sendFinalReportEmail(user.email, event.eventName, reportData);
-        // await sendFinalReportEmail(process.env.ADMIN_EMAIL, event.eventName, reportData);
+        // ✅ UN-COMMENTED
+        await sendFinalReportEmail(user.email, event.eventName, reportData);
+        await sendFinalReportEmail(process.env.ADMIN_EMAIL, event.eventName, reportData); // Send to Admin
         
         // 6. Archive Permanent Stats
         const archive = await db.EventArchive.create({
@@ -86,14 +92,15 @@ export const runOffboardingScript = async () => {
         for (const member of attendedMembers) {
           const archiveData = { eventArchiveId: archive.id };
           if (member.memberType === 'Student') {
+            const studentData = { ...archiveData, studentId: member.memberId };
             if (member.role === 'Participant') {
-              await db.ParticipatedEvent.create({ ...archiveData, studentId: member.memberId }, { transaction: t });
+              await db.ParticipatedEvent.create(studentData, { transaction: t });
             }
             if (member.role === 'Committee Member') {
-              await db.CommitteeEvent.create({ ...archiveData, studentId: member.memberId }, { transaction: t });
+              await db.CommitteeEvent.create(studentData, { transaction: t });
             }
             if (member.role === 'Student Organiser') {
-              await db.OrganizedEvent.create({ ...archiveData, studentId: member.memberId }, { transaction: t });
+              await db.OrganizedEvent.create(studentData, { transaction: t });
             }
           } else if (member.memberType === 'Employee' && member.role === 'Employee Organiser') {
             await db.EmployeeOrganizedEvent.create({ ...archiveData, employeeId: member.memberId }, { transaction: t });
@@ -142,6 +149,7 @@ export const sendExpiryWarning = async () => {
 
     for (const user of usersToExpire) {
       console.log(`Sending expiry warning to ${user.email}`);
+      // ✅ UN-COMMENTED
       await sendAccessWarningEmail(user.email, user.accessExpiryDate);
     }
     

@@ -143,18 +143,18 @@ export default function Addevent() {
 
   return (
     // Re-using your original dark theme
-    <div className='min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex justify-center items-center p-6 text-white'>
+    <div className='min-h-screen bg-linear-to-br from-slate-900 via-purple-900 to-slate-900 flex justify-center items-center p-6 text-white'>
       <form onSubmit={handleSubmit} className='bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8 w-full max-w-3xl'>
         {/* Header */}
         <div className='text-center mb-8'>
-          <h2 className='text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent'>
+          <h2 className='text-3xl font-bold bg-linear-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent'>
             Create New Event
           </h2>
           <p className='text-gray-400 mt-2'>Step {step} of 4</p>
 
           {/* Progress Bar */}
           <div className="w-full bg-white/10 rounded-full h-2.5 mt-4">
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all" style={{ width: `${progress}%` }}></div>
+            <div className="bg-linear-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all" style={{ width: `${progress}%` }}></div>
           </div>
         </div>
 
@@ -185,7 +185,7 @@ export default function Addevent() {
               ))}
             </select>
             <div className='flex justify-end pt-4'>
-              <button type="button" onClick={handleNext} className='bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-xl font-semibold'>
+              <button type="button" onClick={handleNext} className='bg-linear-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-xl font-semibold'>
                 Next
               </button>
             </div>
@@ -223,7 +223,7 @@ export default function Addevent() {
               <button type="button" onClick={handlePrev} className='bg-white/10 text-gray-300 px-8 py-3 rounded-xl font-semibold'>
                 Back
               </button>
-              <button type="button" onClick={handleNext} className='bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-xl font-semibold'>
+              <button type="button" onClick={handleNext} className='bg-linear-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-xl font-semibold'>
                 Next
               </button>
             </div>
@@ -243,7 +243,7 @@ export default function Addevent() {
               <button type="button" onClick={handlePrev} className='bg-white/10 text-gray-300 px-8 py-3 rounded-xl font-semibold'>
                 Back
               </button>
-              <button type="button" onClick={handleNext} className='bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-xl font-semibold'>
+              <button type="button" onClick={handleNext} className='bg-linear-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-xl font-semibold'>
                 Next
               </button>
             </div>
@@ -271,7 +271,7 @@ export default function Addevent() {
               <button type="button" onClick={handlePrev} className='bg-white/10 text-gray-300 px-8 py-3 rounded-xl font-semibold'>
                 Back
               </button>
-              <button type='submit' disabled={loading} className='bg-gradient-to-r from-green-500 to-emerald-500 text-white px-8 py-3 rounded-xl font-semibold disabled:opacity-50'>
+              <button type='submit' disabled={loading} className='bg-linear-to-r from-green-500 to-emerald-500 text-white px-8 py-3 rounded-xl font-semibold disabled:opacity-50'>
                 {loading ? 'Creating...' : 'Create Event'}
               </button>
             </div>

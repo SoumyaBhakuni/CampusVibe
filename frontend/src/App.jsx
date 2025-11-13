@@ -1,27 +1,25 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./context/AuthProvider"; // We import the new Provider
-import ProtectedRoute from "./components/ProtectedRoute"; // We import our new gatekeeper
+import { AuthProvider } from "./context/AuthProvider"; // Correctly imports from new context folder
+import ProtectedRoute from "./components/ProtectedRoute"; // Correctly imports our gatekeeper
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
-// --- Import All Pages ---
-// Existing Pages
+// --- Import All Pages (Using the correct filenames from your 'pages' folder) ---
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Addevent from "./pages/Addevent";
 import NeedResources from "./pages/NeedResources";
-// This is your old 'Eventpage.jsx', which we'll rename to 'EventListPage.jsx'
-import EventListPage from "./pages/EventListPage"; 
 
-// New Pages (We will create these files one by one)
+// --- Corrected Imports (to match your new files) ---
+import EventListPage from "./pages/EventListPage";         // The page that lists all events
+import EventDashboard from "./pages/EventDashboard";       // The page for a *specific* event
+import ClubListPage from "./pages/ClubListPage";         // The page that lists all clubs
+import ClubDashboard from "./pages/ClubDashboard";       // The page for a *specific* club
 import AdminDashboard from "./pages/AdminDashboard";
 import OrganizerDashboard from "./pages/OrganizerDashboard";
 import ChangePassword from "./pages/ChangePassword";
-import EventDetails from "./pages/EventDetails";
-import RegisterForEvent from "./pages/RegisterForEvent";
-import ClubDashboard from "./pages/ClubDashboard";
-import ClubDetails from "./pages/ClubDetails";
 import EventRequestForm from "./pages/EventRequestForm";
+import RegisterForEvent from "./pages/RegisterForEvent";
 import NotFound from "./pages/NotFound";
 
 /**
@@ -42,12 +40,17 @@ function App() {
             {/* --- Public Routes (Public Lane) --- */}
             <Route path="/" element={<Home />} />
             <Route path="/signin" element={<Login />} />
-            <Route path="/events" element={<EventListPage />} />
-            <Route path="/events/:id" element={<EventDetails />} />
-            <Route path="/events/:id/register" element={<RegisterForEvent />} />
-            <Route path="/clubs" element={<ClubDashboard />} />
-            <Route path="/clubs/:id" element={<ClubDetails />} />
             <Route path="/request-event" element={<EventRequestForm />} />
+
+            {/* --- Corrected Club Routes --- */}
+            <Route path="/clubs" element={<ClubListPage />} /> 
+            <Route path="/clubs/:id" element={<ClubDashboard />} /> 
+
+            {/* --- Corrected Event Routes --- */}
+            <Route path="/events" element={<EventListPage />} />
+            <Route path="/events/:id" element={<EventDashboard />} />
+            <Route path="/events/:id/register" element={<RegisterForEvent />} />
+
 
             {/* --- Protected Routes (Admin & Organizer Lanes) --- */}
             
@@ -72,18 +75,14 @@ function App() {
               path="/addevent" 
               element={<ProtectedRoute element={<Addevent />} requiredRole={ORGANIZER_ROLES} />} 
             />
-            {/* This route is now dynamic to pass the event ID */}
             <Route 
-              path="/resources/:eventId" 
+              path="/resources/:eventId" // Route is now dynamic
               element={<ProtectedRoute element={<NeedResources />} requiredRole={ORGANIZER_ROLES} />} 
             />
             
             {/* Catch-all for 404 */}
             <Route path="*" element={<NotFound />} />
             
-            {/* --- Original Obsolete Routes (we are no longer using) --- */}
-            {/* <Route path="/register" element={<Register />} /> */}
-            {/* <Route path="/pevent" element={<Pevent />} /> */}
           </Routes>
         </main>
         <Footer />

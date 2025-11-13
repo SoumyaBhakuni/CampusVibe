@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth'; // Our new auth hook
 
@@ -7,36 +7,43 @@ export default function NeedResources() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [cart, setCart] = useState({}); // Stores { resourceId: quantity }
+  const [submitting, setSubmitting] = useState(false); // For form submission
+  
   const { eventId } = useParams(); // Get eventId from URL (e.g., /resources/101)
   const { getToken } = useAuth();
   const navigate = useNavigate();
 
-  // Fetch all available resources from the backend
-  useEffect(() => {
-    const fetchResources = async () => {
-      try {
-        setLoading(true);
-        const token = getToken();
-        // We need a new protected route to get all resources
-        // (e.g., GET /api/admin/resources, which we will build)
-        // For now, we'll mock the data:
-        const mockResources = [
-          { resourceId: 1, resourceName: 'Benches', category: 'Furniture' },
-          { resourceId: 2, resourceName: 'Projector', category: 'AV' },
-          { resourceId: 3, resourceName: 'WiFi Router', category: 'IT' },
-          { resourceId: 4, resourceName: 'Microphone', category: 'AV' },
-          { resourceId: 5, resourceName: 'Podium', category: 'Furniture' },
-          { resourceId: 6, resourceName: 'Extension Cords', category: 'IT' },
-        ];
-        setResources(mockResources);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch resources');
-        setLoading(false);
+  // ✅ Fetch all available resources from the backend
+  const fetchResources = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const token = getToken();
+      
+      // This is our new, protected GET route for Organizers
+      const res = await fetch('http://localhost:5000/api/organizer/resources', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to fetch resources');
       }
-    };
-    fetchResources();
+
+      const data = await res.json();
+      setResources(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, [getToken]);
+
+  useEffect(() => {
+    fetchResources();
+  }, [fetchResources]);
 
   const handleQuantityChange = (resourceId, quantity) => {
     const num = parseInt(quantity, 10);
@@ -54,7 +61,7 @@ export default function NeedResources() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSubmitting(true);
     setError('');
 
     // Convert the 'cart' object into the array format our backend expects
@@ -65,7 +72,7 @@ export default function NeedResources() {
 
     if (items.length === 0) {
       setError('Please select at least one resource.');
-      setLoading(false);
+      setSubmitting(false);
       return;
     }
 
@@ -86,19 +93,19 @@ export default function NeedResources() {
         throw new Error(errData.message || 'Failed to submit request');
       }
 
-      alert('Resource request submitted successfully! All incharges have been notified.');
+      alert('Resource request submitted successfully! Incharges have been notified.');
       setCart({}); // Clear the cart
       navigate(`/events/${eventId}`); // Go back to the event dashboard
 
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-purple-900 p-8 text-white">
+    <div className="min-h-screen bg-linear-to-br from-slate-900 to-purple-900 p-8 text-white">
       <form onSubmit={handleSubmit} className="max-w-3xl mx-auto bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10">
         <h2 className="text-3xl font-bold text-center mb-6">Request Resources</h2>
         <p className="text-gray-300 text-center mb-6">
@@ -136,10 +143,10 @@ export default function NeedResources() {
 
         <button 
           type="submit" 
-          disabled={loading || Object.keys(cart).length === 0} 
-          className="w-full mt-6 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50 transition-all"
+          disabled={loading || submitting || Object.keys(cart).length === 0} 
+          className="w-full mt-6 bg-linear-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50 transition-all"
         >
-          {loading ? 'Submitting...' : 'Submit Request'}
+          {submitting ? 'Submitting...' : 'Submit Request'}
         </button>
       </form>
     </div>

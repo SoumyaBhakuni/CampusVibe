@@ -1,4 +1,4 @@
-import db from '../models/index.js'; // ✅ CORRECTED: Default import
+import db from '../models/index.js';
 import { Op } from 'sequelize';
 
 // =================================================================
@@ -66,14 +66,24 @@ export const addEvent = async (req, res) => {
 };
 
 // =================================================================
-// ✅ 2. GET ALL PUBLIC EVENTS (For Eventpage.jsx)
+// ✅ 2. GET ALL PUBLIC EVENTS (Corrected for "?type=Fest" filter)
 // =================================================================
 export const getEvents = async (req, res) => {
   try {
+    // --- THIS IS THE NEW LOGIC ---
+    let whereClause = {
+      endTime: { [Op.gte]: new Date() } // Only show future events
+    };
+    
+    // Check for our new query parameter
+    if (req.query.type === 'Fest') {
+      // A "Fest" is a parent event, which we defined as having 'parentId: null'
+      whereClause.parentId = null;
+    }
+    // --- END OF NEW LOGIC ---
+
     const events = await db.Event.findAll({
-      where: { 
-        endTime: { [Op.gte]: new Date() } 
-      },
+      where: whereClause, // Apply the dynamic where clause
       include: [
         { model: db.Club, attributes: ['clubName'] },
         { model: db.User, as: 'Organizer', attributes: ['email'] }
@@ -82,6 +92,7 @@ export const getEvents = async (req, res) => {
     });
     res.json(events);
   } catch (error) {
+    console.error('Error fetching events:', error);
     res.status(500).json({ message: 'Error fetching events' });
   }
 };
@@ -106,6 +117,7 @@ export const getEventById = async (req, res) => {
     res.json(event);
 
   } catch (error) {
+    console.error('Error fetching event:', error);
     res.status(500).json({ message: 'Error fetching event' });
   }
 };
@@ -135,6 +147,7 @@ export const deleteEvent = async (req, res) => {
     res.status(200).json({ message: 'Event and all associated data successfully deleted.' });
 
   } catch (error) {
+    console.error('Error deleting event:', error);
     res.status(500).json({ message: 'Error deleting event' });
   }
 };

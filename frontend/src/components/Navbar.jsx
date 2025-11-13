@@ -11,7 +11,7 @@ export default function Navbar() {
   return (
     <nav className='flex items-center px-8 py-4 bg-slate-900/80 backdrop-blur-lg border-b border-white/10 justify-between sticky top-0 z-50'>
       <div className='flex items-center'>
-        <Link to="/" className='text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent'>
+        <Link to="/" className='text-2xl font-bold bg-linear-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent'>
           CampusVibe
         </Link>
       </div>
@@ -30,7 +30,7 @@ export default function Navbar() {
         {user ? (
           <>
             {canOrganize && (
-              <Link to="/addevent" className='bg-gradient-to-r from-purple-500 to-pink-500 text-white px-5 py-3 rounded-xl font-semibold'>
+              <Link to="/addevent" className='bg-linear-to-r from-purple-500 to-pink-500 text-white px-5 py-3 rounded-xl font-semibold'>
                 Add Event
               </Link>
             )}
@@ -44,7 +44,7 @@ export default function Navbar() {
             <Link to="/request-event" className='bg-white/10 text-white px-5 py-3 rounded-xl font-semibold'>
               Organize an Event
             </Link>
-            <Link to="/signin" className='bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-xl font-semibold'>
+            <Link to="/signin" className='bg-linear-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-xl font-semibold'>
               Sign In
             </Link>
           </>
@@ -60,7 +60,7 @@ const NavButton = ({ to, children }) => (
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `font-medium py-3 px-6 rounded-xl ${isActive ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'text-gray-300 hover:text-white'}`
+        `font-medium py-3 px-6 rounded-xl ${isActive ? 'bg-linear-to-r from-purple-500 to-pink-500 text-white' : 'text-gray-300 hover:text-white'}`
       }
     >
       {children}

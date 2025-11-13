@@ -119,7 +119,7 @@ export const sendCertificateEmail = async (studentEmail, studentName, certificat
            <p>Please find your <b>${certificateType}</b> attached.</p>`,
     // attachments: [ { filename: 'certificate.pdf', content: ... (PDF generation logic) } ]
   };
-  // await sendMail(mailOptions); // Uncomment when PDF attachment logic is ready
+  await sendMail(mailOptions);
 };
 
 // 8. Final Report Email (for automationController)
@@ -132,7 +132,7 @@ export const sendFinalReportEmail = async (email, eventName, reportData) => {
            <p>Attached is the final analytics and participant report for your records. Your account is now set to "Guest".</p>`,
     // attachments: [ { filename: 'final_report.pdf', content: reportData } ]
   };
-  // await sendMail(mailOptions); // Uncomment when report generation logic is ready
+  await sendMail(mailOptions);
 };
 
 // 9. Event Canceled Email (for eventController)
@@ -147,7 +147,9 @@ export const sendEventCanceledEmail = async (studentEmail, eventName) => {
   await sendMail(mailOptions);
 };
 
-// 10. Access Expiry Warning Email (for automationController)
+// =================================================================
+// ✅ 10. ACCESS EXPIRY WARNING EMAIL (New Function)
+// =================================================================
 export const sendAccessWarningEmail = async (email, expiryDate) => {
   const mailOptions = {
     from: `"CampusVibe Admin" <${process.env.EMAIL_USER}>`,
