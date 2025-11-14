@@ -43,6 +43,7 @@ export const loginUser = async (req, res) => {
       email: user.email,
       role: user.role,
       mustChangePassword: user.mustChangePassword,
+      eventCreationLimit: user.eventCreationLimit, // <-- ADDED THIS LINE
       token: generateToken(user.id, user.role),
     });
 

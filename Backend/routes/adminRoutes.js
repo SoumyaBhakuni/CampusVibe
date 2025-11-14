@@ -4,7 +4,12 @@ import {
   approveEventRequest, 
   rejectEventRequest,
   clubController,
-  resourceController // <-- Make sure this is imported
+  resourceController,
+  // --- 1. IMPORTED NEW FUNCTIONS ---
+  getAllUsers,
+  updateUserRole,
+  getAllEvents,
+  adminDeleteEvent
 } from '../controllers/adminController.js';
 // 1. CHANGE THIS IMPORT
 import { protect, isEventAdmin, checkPasswordChange } from '../middleware/authMiddleware.js';
@@ -18,6 +23,16 @@ router.use(protect, checkPasswordChange, isEventAdmin);
 router.get('/requests', getPendingAdminRequests);
 router.post('/requests/:requestId/approve', approveEventRequest);
 router.post('/requests/:requestId/reject', rejectEventRequest);
+
+// --- 2. ADDED NEW ROUTES ---
+
+// --- User Management Routes ---
+router.get('/users', getAllUsers);
+router.put('/users/:id/role', updateUserRole); // e.g., body: { "role": "Guest" }
+
+// --- Event Management Routes ---
+router.get('/events', getAllEvents);
+router.delete('/events/:id', adminDeleteEvent);
 
 // --- Club Management Routes ---
 router.post('/clubs', clubController.create);

@@ -6,11 +6,12 @@ import {
   getPendingVerifications,
   verifyPayment,
   rejectPayment,
-  addTeamMember,          // <-- This was missing
-  updateLeaderboard,      // <-- This was missing
+  addTeamMember,
+  updateLeaderboard,
   getMyEvents,
-  getEventTeam,           // <-- This is new
-  removeTeamMember        // <-- This is new
+  getEventTeam,
+  removeTeamMember,
+  checkInMember // <-- 1. IMPORTED NEW FUNCTION
 } from '../controllers/organizerController.js';
 import { resourceController } from '../controllers/adminController.js';
 import { protect, isOrganizer, checkPasswordChange } from '../middleware/authMiddleware.js';
@@ -41,5 +42,9 @@ router.delete('/event/:eventId/team/:memberId', removeTeamMember); // <-- NEW: T
 
 // --- Leaderboard Management ---
 router.put('/event/:eventId/leaderboard', updateLeaderboard); // <-- NEW
+
+// --- 2. ADDED NEW CHECK-IN ROUTE ---
+// --- Event Day Check-in ---
+router.post('/check-in', checkInMember);
 
 export default router;

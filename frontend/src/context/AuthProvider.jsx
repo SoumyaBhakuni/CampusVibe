@@ -34,9 +34,9 @@ export const AuthProvider = ({ children }) => {
       email: data.email,
       role: data.role,
       token: data.token,
+      eventCreationLimit: data.eventCreationLimit, // <-- ADDED THIS LINE
     };
     localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
 
     // --- NEW ROLE-BASED REDIRECTION ---
     if (data.mustChangePassword) {

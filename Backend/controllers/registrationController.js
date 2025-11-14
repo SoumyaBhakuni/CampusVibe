@@ -15,9 +15,30 @@ export const registerForEvent = async (req, res) => {
 
     const paymentScreenshotPath = req.file ? `/uploads/${req.file.filename}` : null;
 
+    // --- NEW VALIDATION BLOCK ---
+    if (event.isPaidEvent) {
+      if (!formData.transactionId) {
+        await t.rollback();
+        return res.status(400).json({ message: 'Transaction ID is required for paid events.' });
+      }
+      if (!paymentScreenshotPath) {
+        await t.rollback();
+        return res.status(400).json({ message: 'Payment screenshot is required for paid events.' });
+      }
+    }
+    // --- END VALIDATION BLOCK ---
+
     // Path A & B: Individual Registration
     if (event.registrationType === 'Individual') {
       const { studentId, ...customFormData } = formData;
+
+      // --- NEW VALIDATION ---
+      if (!studentId) {
+        await t.rollback();
+        return res.status(400).json({ message: 'Student ID is required.' });
+      }
+      // --- END VALIDATION ---
+
       const student = await db.Student.findByPk(studentId);
       if (!student) {
         await t.rollback();
@@ -46,6 +67,13 @@ export const registerForEvent = async (req, res) => {
     } else if (event.registrationType === 'Team') {
       const { teamName, teamLeaderStudentId, teamMemberStudentIds, ...customFormData } = formData;
       
+      // --- NEW VALIDATION ---
+      if (!teamName || !teamLeaderStudentId) {
+        await t.rollback();
+        return res.status(400).json({ message: 'Team Name and Team Leader ID are required.' });
+      }
+      // --- END VALIDATION ---
+
       const leader = await db.Student.findByPk(teamLeaderStudentId);
       if (!leader) {
         await t.rollback();

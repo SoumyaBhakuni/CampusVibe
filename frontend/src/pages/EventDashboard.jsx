@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth'; // ✅ CORRECTED IMPORT PATH
+import { useAuth } from '../hooks/useAuth'; 
 import NotFound from './NotFound';
 
 // This is the main "Unified Event Dashboard" component
@@ -9,10 +9,10 @@ export default function EventDashboard() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeModal, setActiveModal] = useState(null); // 'payments', 'team', 'leaderboard'
+  const [activeModal, setActiveModal] = useState(null); // 'payments', 'team', 'leaderboard', 'checkin'
   
   const { id } = useParams();
-  const { user, getToken } = useAuth(); // This will now work
+  const { user, getToken } = useAuth(); 
   const navigate = useNavigate();
 
   // --- 1. DATA FETCHING ---
@@ -20,6 +20,7 @@ export default function EventDashboard() {
     try {
       setLoading(true);
       setError('');
+      
       const eventRes = await fetch(`http://localhost:5000/api/events/${id}`);
       if (!eventRes.ok) {
         const errData = await eventRes.json();
@@ -29,13 +30,16 @@ export default function EventDashboard() {
       setEvent(eventData);
 
       if (eventData.hasLeaderboard) {
-        // We will assume a new backend route: GET /api/events/:id/leaderboard
-        // For now, we'll mock it
-        setLeaderboard([
-          { id: 1, rank: 1, competitorId: 'Team A', competitorType: 'Team', marks: 950 },
-          { id: 2, rank: 2, competitorId: 'Team B', competitorType: 'Team', marks: 920 },
-        ]);
+        const leaderboardRes = await fetch(`http://localhost:5000/api/events/${id}/leaderboard`);
+        if (leaderboardRes.ok) {
+          const leaderboardData = await leaderboardRes.json();
+          setLeaderboard(leaderboardData);
+        } else {
+          console.warn("Failed to fetch leaderboard data.");
+          setLeaderboard([]);
+        }
       }
+      
     } catch (err) {
       setError(err.message);
     } finally {
@@ -49,7 +53,7 @@ export default function EventDashboard() {
 
   // --- 2. ROLE & PERMISSION LOGIC ---
   const isOwner = user && event && event.Organizer && 
-                  (user.role === 'Admin' || user.email === event.Organizer.email);
+                  (user.role === 'Admin' || user.role === 'EventAdmin' || user.email === event.Organizer.email);
 
   // --- 3. ORGANIZER ACTION HANDLERS ---
   const handleDeleteEvent = async () => {
@@ -128,13 +132,15 @@ export default function EventDashboard() {
         {isOwner && (
           <div className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/10 mb-8">
             <h3 className="text-2xl font-semibold mb-4 text-purple-300">Organizer Admin Panel</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <Link to={`/resources/${id}`} className="admin-button">Request Resources</Link>
-              <button onClick={() => setActiveModal('payments')} className="admin-button">Verify Payments</button>
-              <button onClick={() => setActiveModal('team')} className="admin-button">Manage Team</button>
-              <button onClick={() => setActiveModal('leaderboard')} className="admin-button">Manage Leaderboard</button>
-              <button onClick={handleSendAttendance} className="admin-button">Send Attendance</button>
-              <button onClick={handleDeleteEvent} className="admin-button bg-red-800/50 text-red-300 hover:bg-red-800/70">Delete Event</button>
+            {/* --- 1. ADDED "CHECK-IN" BUTTON --- */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+              <button onClick={() => setActiveModal('checkin')} className="admin-button bg-green-600/50 text-green-300 hover:bg-green-600/70">Check-in</button>
+              <Link to={`/resources/${id}`} className="admin-button">Resources</Link>
+              <button onClick={() => setActiveModal('payments')} className="admin-button">Payments</button>
+              <button onClick={() => setActiveModal('team')} className="admin-button">Team</button>
+              <button onClick={() => setActiveModal('leaderboard')} className="admin-button">Leaderboard</button>
+              <button onClick={handleSendAttendance} className="admin-button">Attendance</button>
+              <button onClick={handleDeleteEvent} className="admin-button bg-red-800/50 text-red-300 hover:bg-red-800/70">Delete</button>
             </div>
           </div>
         )}
@@ -150,6 +156,20 @@ export default function EventDashboard() {
                 <p><strong>Venue:</strong> {event.venue}</p>
                 <p><strong>Type:</strong> {event.registrationType} ({event.isPaidEvent ? 'Paid' : 'Free'})</p>
                 <p><strong>Organizing Club:</strong> {event.Club ? event.Club.clubName : 'N/A'}</p>
+                {event.SubEvents && event.SubEvents.length > 0 && (
+                  <div>
+                    <strong className="block mt-3">Sub-Events:</strong>
+                    <ul className="list-disc list-inside">
+                      {event.SubEvents.map(sub => (
+                        <li key={sub.id}>
+                          <Link to={`/events/${sub.id}`} className="text-purple-300 hover:underline">
+                            {sub.eventName}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -162,7 +182,7 @@ export default function EventDashboard() {
                   <tbody>
                     {leaderboard.map((item) => (
                       <tr key={item.id} className="border-b border-white/5">
-                        <td className="p-3 text-2xl font-bold text-purple-300">{item.rank}</td>
+                        <td className="p-3 text-2xl font-bold text-purple-300">{item.rank || 'N/A'}</td>
                         <td className="p-3 text-lg">{item.competitorId}</td>
                         {event.showLeaderboardMarks && <td className="p-3 text-right text-lg">{item.marks}</td>}
                       </tr>
@@ -189,7 +209,8 @@ export default function EventDashboard() {
         </div>
       </div>
 
-      {/* --- MODALS --- */}
+      {/* --- 2. ADDED NEW MODAL TO RENDER --- */}
+      {activeModal === 'checkin' && <CheckInModal eventId={id} onClose={() => setActiveModal(null)} />}
       {activeModal === 'payments' && <VerifyPaymentsModal eventId={id} onClose={() => setActiveModal(null)} />}
       {activeModal === 'team' && <ManageTeamModal eventId={id} onClose={() => setActiveModal(null)} />}
       {activeModal === 'leaderboard' && <ManageLeaderboardModal eventId={id} event={event} currentLeaderboard={leaderboard} onClose={() => setActiveModal(null)} onSave={fetchEventAndLeaderboard} />}
@@ -203,7 +224,7 @@ export default function EventDashboard() {
 const VerifyPaymentsModal = ({ eventId, onClose }) => {
   const [pending, setPending] = useState({ teams: [], individuals: [] });
   const [loading, setLoading] = useState(true);
-  const { getToken } = useAuth(); // This will now work
+  const { getToken } = useAuth(); 
 
   const fetchPending = useCallback(async () => {
     setLoading(true);
@@ -276,7 +297,7 @@ const ManageTeamModal = ({ eventId, onClose }) => {
   const [memberId, setMemberId] = useState('');
   const [memberType, setMemberType] = useState('Student');
   const [role, setRole] = useState('Committee Member');
-  const { getToken } = useAuth(); // This will now work
+  const { getToken } = useAuth(); 
 
   const fetchTeam = useCallback(async () => {
     setLoading(true);
@@ -314,6 +335,16 @@ const ManageTeamModal = ({ eventId, onClose }) => {
     alert('Team member removed.');
     fetchTeam(); // Refresh list
   };
+  
+  const getMemberName = (member) => {
+    if (member.memberType === 'Student' && member.Student) {
+      return member.Student.name;
+    }
+    if (member.memberType === 'Employee' && member.Employee) {
+      return member.Employee.name;
+    }
+    return member.memberId; // Fallback
+  };
 
   return (
     <Modal title="Manage Your Organizing Team" onClose={onClose}>
@@ -334,7 +365,7 @@ const ManageTeamModal = ({ eventId, onClose }) => {
         {loading ? <p>Loading team...</p> : team.map(member => (
           <div key={member.id} className="bg-white/10 p-3 rounded flex justify-between items-center">
             <div>
-              <p>{member.memberId} ({member.memberType})</p>
+              <p className="font-semibold">{getMemberName(member)} ({member.memberType})</p>
               <p className="text-sm text-purple-300">{member.role}</p>
             </div>
             <button onClick={() => handleRemoveMember(member.id)} className="admin-button-red text-sm">Remove</button>
@@ -351,10 +382,8 @@ const ManageTeamModal = ({ eventId, onClose }) => {
 const ManageLeaderboardModal = ({ eventId, event, currentLeaderboard, onClose, onSave }) => {
   const [scores, setScores] = useState(currentLeaderboard); 
   const [showMarks, setShowMarks] = useState(event.showLeaderboardMarks);
-  const { getToken } = useAuth(); // This will now work
+  const { getToken } = useAuth(); 
   
-  // TODO: Fetch existing competitors (teams/individuals) to populate this
-
   const handleScoreChange = (index, newMarks) => {
     const updatedScores = [...scores];
     updatedScores[index].marks = parseInt(newMarks, 10) || 0;
@@ -403,6 +432,83 @@ const ManageLeaderboardModal = ({ eventId, event, currentLeaderboard, onClose, o
     </Modal>
   );
 };
+
+// ===================================================================
+// --- 3. NEW MODAL COMPONENT: CHECK-IN ---
+// ===================================================================
+const CheckInModal = ({ eventId, onClose }) => {
+  const [studentId, setStudentId] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' }); // type: 'success' or 'error'
+  const { getToken } = useAuth();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!studentId) return;
+    
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+    
+    try {
+      const token = getToken();
+      const res = await fetch('http://localhost:5000/api/organizer/check-in', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ eventId: parseInt(eventId, 10), studentId }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.message || 'Check-in failed');
+      }
+      
+      setMessage({ type: 'success', text: data.message });
+      setStudentId(''); // Clear input on success
+      
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal title="Event Check-in" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block text-gray-300 font-medium mb-2">Student ID</label>
+        <input 
+          type="text"
+          value={studentId}
+          onChange={(e) => setStudentId(e.target.value)}
+          className="input-field"
+          placeholder="Enter Student ID (e.g., S123)"
+          required
+        />
+        
+        {message.text && (
+          <div className={`p-3 rounded-lg ${
+            message.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'
+          }`}>
+            {message.text}
+          </div>
+        )}
+        
+        <button 
+          type="submit" 
+          disabled={loading}
+          className="w-full admin-button-green"
+        >
+          {loading ? 'Checking in...' : 'Check In Student'}
+        </button>
+      </form>
+    </Modal>
+  );
+};
+
 
 // ===================================================================
 // --- GENERIC MODAL COMPONENT ---

@@ -2,8 +2,45 @@ import db from '../models/index.js'; // ✅ CORRECTED: Default import
 import { sendAttendanceReportEmail } from '../utils/mailer.js';
 import { Op } from 'sequelize';
 
+// --- NEW HELPER FUNCTIONS ---
+
+// 1. Helper to get Day of Week
+// (Note: This is a simple implementation for single-day events)
+const getDayOfWeek = (date) => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[new Date(date).getDay()];
+};
+
+// 2. Helper to check for time overlap
+// timeSlot is "HH:MM-HH:MM" (e.g., "09:00-11:00")
+// eventStartTime and eventEndTime are Date objects
+const timeSlotOverlap = (timeSlot, eventStartTime, eventEndTime) => {
+  try {
+    const [startStr, endStr] = timeSlot.split('-');
+    const [startHour, startMin] = startStr.split(':').map(Number);
+    const [endHour, endMin] = endStr.split(':').map(Number);
+
+    // Create Date objects for the class times on the same day as the event
+    const classStart = new Date(eventStartTime);
+    classStart.setHours(startHour, startMin, 0, 0);
+    
+    const classEnd = new Date(eventStartTime);
+    classEnd.setHours(endHour, endMin, 0, 0);
+
+    // Standard overlap check: (StartA < EndB) and (EndA > StartB)
+    return (classStart < eventEndTime) && (classEnd > eventStartTime);
+    
+  } catch (error) {
+    console.error(`Error parsing time slot: ${timeSlot}`, error);
+    return false; // Fail safely
+  }
+};
+
+// --- END HELPER FUNCTIONS ---
+
+
 // =================================================================
-// ✅ 1. SEND ATTENDANCE REPORT (Organizer Button)
+// ✅ 1. SEND ATTENDANCE REPORT (REFACTORED)
 // =================================================================
 export const sendAttendanceReport = async (req, res) => {
   const { eventId } = req.params;
@@ -12,14 +49,24 @@ export const sendAttendanceReport = async (req, res) => {
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
+    
+    // --- 1. Get Event Time & Day ---
+    const eventStartTime = new Date(event.startTime);
+    const eventEndTime = new Date(event.endTime);
+    // (This simple logic assumes the event is on a single day)
+    const eventDay = getDayOfWeek(eventStartTime);
 
-    // 1. Get all *checked in* student attendees
+    // 2. Get all *checked in* student attendees
     const attendees = await db.EventMember.findAll({
       where: { eventId, checkedIn: true, memberType: 'Student' },
       include: [{ model: db.Student, include: [db.Course] }]
     });
 
-    // 2. Get the "Generalised Committee List"
+    if (attendees.length === 0) {
+      return res.status(200).json({ message: 'No students were checked in. No reports sent.' });
+    }
+
+    // 3. Get the "Generalised Committee List"
     const committee = await db.EventMember.findAll({
       where: {
         eventId,
@@ -29,7 +76,7 @@ export const sendAttendanceReport = async (req, res) => {
       include: [{ model: db.Student, include: [db.Course] }]
     });
 
-    // 3. Find all TimeTableEntries that conflict with the event
+    // 4. Find all TimeTableEntries that conflict with the event
     const studentGroups = [...new Set(attendees.map(a => 
       `${a.Student.courseId}-${a.Student.year}-${a.Student.section}`
     ))];
@@ -45,12 +92,12 @@ export const sendAttendanceReport = async (req, res) => {
     
     const timeTableIds = timeTables.map(t => t.timeTableId);
 
+    // --- REFACTORED QUERY ---
+    // Now filters by the specific day of the event
     const conflictingEntries = await db.TimeTableEntry.findAll({
       where: {
         timeTableId: timeTableIds,
-        // This is a simplified logic. A real query would check
-        // dayOfWeek and time-range overlap.
-        // day: { [Op.in]: [/* days of event */] } 
+        day: eventDay // <-- Only check classes on the same day as the event
       },
       include: [
         { model: db.TimeTable, include: [db.Course] },
@@ -58,17 +105,22 @@ export const sendAttendanceReport = async (req, res) => {
         { model: db.Subject }
       ]
     });
+    // --- END REFACTORED QUERY ---
 
-    // 4. Map attendees to their conflicting classes
+    // 5. Map attendees to their conflicting classes
     const conflictMap = new Map(); // Key: employeeId, Value: { employee, classes: Map }
     
     for (const attendee of attendees) {
       const student = attendee.Student;
       
       const missedClasses = conflictingEntries.filter(entry => 
-        entry.TimeTable.courseId === student.courseId &&
+        // 1. Check if the class is for this student's group
+        (entry.TimeTable.courseId === student.courseId &&
         entry.TimeTable.year === student.year &&
-        entry.TimeTable.section === student.section
+        entry.TimeTable.section === student.section) &&
+        
+        // 2. Check if the class time *actually overlaps* with the event time
+        timeSlotOverlap(entry.timeSlot, eventStartTime, eventEndTime)
       );
 
       for (const entry of missedClasses) {
@@ -83,7 +135,7 @@ export const sendAttendanceReport = async (req, res) => {
         }
         
         const employeeData = conflictMap.get(employeeId);
-        const classKey = `${entry.TimeTable.Course.courseName} ${entry.TimeTable.year} ${entry.TimeTable.section} (${entry.Subject.subjectName})`;
+        const classKey = `${entry.TimeTable.Course.courseName} ${entry.TimeTable.year} ${entry.TimeTable.section} (${entry.Subject.subjectName}) - Slot: ${entry.timeSlot}`;
 
         if (!employeeData.classes.has(classKey)) {
           employeeData.classes.set(classKey, {
@@ -96,7 +148,7 @@ export const sendAttendanceReport = async (req, res) => {
       }
     }
 
-    // 5. Send one consolidated email per employee
+    // 6. Send one consolidated email per employee
     const mailPromises = [];
     for (const [employeeId, data] of conflictMap.entries()) {
       mailPromises.push(
@@ -104,9 +156,13 @@ export const sendAttendanceReport = async (req, res) => {
           employee: data.employee,
           event,
           classes: data.classes, 
-          committeeList: committee,
+          committeeList: committee, // Pass the correct variable
         })
       );
+    }
+
+    if (mailPromises.length === 0) {
+       return res.status(200).json({ message: `Attendance report complete. No conflicting classes found for checked-in students.` });
     }
 
     await Promise.all(mailPromises);

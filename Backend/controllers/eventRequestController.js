@@ -11,6 +11,14 @@ export const createEventRequest = async (req, res) => {
       requestedEventCount
     } = req.body;
 
+    // --- NEW VALIDATION BLOCK ---
+    if (!requestorEmail || !eventDetails || !requestType || !scope) {
+      return res.status(400).json({ 
+        message: 'Email, Event Details, Request Type, and Scope are required fields.' 
+      });
+    }
+    // --- END VALIDATION BLOCK ---
+
     // The admin will review this, so we set the initial status
     const status = 'Pending_Admin';
 

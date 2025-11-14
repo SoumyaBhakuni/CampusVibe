@@ -1,17 +1,22 @@
 import express from 'express';
-import { addEvent, getEvents, getEventById, deleteEvent } from '../controllers/eventController.js';
+import { 
+  addEvent, 
+  getEvents, 
+  getEventById, 
+  deleteEvent, 
+  getEventLeaderboard,
+  updateEvent // <-- 1. IMPORTED NEW FUNCTION
+} from '../controllers/eventController.js';
 import { protect, isOrganizer, checkPasswordChange } from '../middleware/authMiddleware.js';
-import { uploadEventWizard } from '../utils/fileUploads.js'; // <-- CORRECTED IMPORT
+import { uploadEventWizard } from '../utils/fileUploads.js'; // <-- This is re-used
 
 const router = express.Router();
 
 // --- PUBLIC ROUTES (for "Public User" lane) ---
 
-// ✅ GET all events (for Eventpage.jsx)
 router.get('/', getEvents);
-
-// ✅ GET one event's details (for the "Unified Event Dashboard")
 router.get('/:id', getEventById);
+router.get('/:id/leaderboard', getEventLeaderboard);
 
 // --- PROTECTED ROUTES (for "Organizer" & "Admin" lanes) ---
 
@@ -21,8 +26,19 @@ router.post(
   protect,
   checkPasswordChange,
   isOrganizer,
-  uploadEventWizard, // <-- CORRECTED HANDLER
+  uploadEventWizard, 
   addEvent
+);
+
+// --- 2. ADDED NEW PUT ROUTE FOR EDITING ---
+// ✅ PUT to update an existing event
+router.put(
+  '/:id',
+  protect,
+  checkPasswordChange,
+  isOrganizer,
+  uploadEventWizard, // Re-use the same upload handler
+  updateEvent
 );
 
 // ✅ DELETE an event (Manual Deletion)

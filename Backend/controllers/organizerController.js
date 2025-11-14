@@ -284,3 +284,72 @@ export const updateLeaderboard = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// =================================================================
+// ✅ 12. CHECK-IN MEMBER (NEW FUNCTION)
+// =================================================================
+export const checkInMember = async (req, res) => {
+  const { eventId, studentId } = req.body;
+  const organizerId = req.user.id;
+
+  try {
+    // 1. Find the event and check if this organizer owns it
+    const event = await db.Event.findByPk(eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found.' });
+    }
+    // Only the owner or an Admin can check people in
+    if (event.organizerId !== organizerId && req.user.role !== 'EventAdmin') {
+      return res.status(403).json({ message: 'Not authorized for this event.' });
+    }
+
+    // 2. Find the student's registration for this event
+    const member = await db.EventMember.findOne({
+      where: {
+        eventId,
+        memberId: studentId,
+        memberType: 'Student',
+        role: 'Participant' // Only check in participants
+      },
+      include: [ db.Student, db.Team ] // Include Team to check team payment status
+    });
+
+    if (!member) {
+      return res.status(404).json({ message: `Student ${studentId} is not registered for this event.` });
+    }
+
+    // 3. Check if already checked in
+    if (member.checkedIn) {
+      return res.status(400).json({ message: `${member.Student.name} (${studentId}) is already checked in.` });
+    }
+
+    // 4. Check payment status if it's a paid event
+    if (event.isPaidEvent) {
+      const isTeamRegistration = !!member.teamId;
+      
+      if (isTeamRegistration) {
+        // For team events, check the Team's payment status
+        if (!member.Team || member.Team.paymentStatus !== 'Verified') {
+          return res.status(402).json({ message: `Payment not verified for team: ${member.Team.teamName}.` });
+        }
+      } else {
+        // For individual events, check the EventMember's payment status
+        if (member.paymentStatus !== 'Verified') {
+          return res.status(402).json({ message: `Payment not verified for student: ${studentId}.` });
+        }
+      }
+    }
+
+    // 5. All checks passed. Check them in!
+    member.checkedIn = true;
+    await member.save();
+
+    res.status(200).json({ 
+      message: `Successfully checked in ${member.Student.name} (${studentId}).`,
+      memberName: member.Student.name
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

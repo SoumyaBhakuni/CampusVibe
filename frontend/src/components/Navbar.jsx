@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth'; // <-- This should be hooks/useAuth
+import { useAuth } from '../hooks/useAuth'; // <-- This is the correct path
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -8,7 +8,8 @@ export default function Navbar() {
   // --- START OF UPDATED LOGIC ---
   const isEventAdmin = user && user.role === 'EventAdmin';
   const isAcademicAdmin = user && user.role === 'AcademicAdmin';
-  const canOrganize = user && (user.role.includes('Organizer') || isEventAdmin);
+  // This check is now *only* for Organizers, not Admins
+  const isOrganizer = user && user.role.includes('Organizer');
   // --- END OF UPDATED LOGIC ---
 
   return (
@@ -21,14 +22,20 @@ export default function Navbar() {
 
       <div className='flex items-center'>
         <ul className='flex gap-2 items-center bg-white/5 backdrop-blur-lg rounded-2xl p-1 border border-white/10'>
-          <NavButton to="/">Home</NavButton>
-          <NavButton to="/events">Events</NavButton>
-          <NavButton to="/clubs">Clubs</NavButton>
           
-          {/* --- START OF UPDATED LINKS --- */}
+          {/* --- This logic is now updated --- */}
+          {!user && (
+            <>
+              <NavButton to="/">Home</NavButton>
+              <NavButton to="/events">Events</NavButton>
+              <NavButton to="/clubs">Clubs</NavButton>
+            </>
+          )}
+          
           {isEventAdmin && <NavButton to="/admin/dashboard">Event Admin</NavButton>}
           {isAcademicAdmin && <NavButton to="/academic/dashboard">Academic Admin</NavButton>}
-          {canOrganize && <NavButton to="/organizer/dashboard">My Dashboard</NavButton>}
+          {/* This check now correctly uses isOrganizer and won't show for EventAdmin */}
+          {isOrganizer && <NavButton to="/organizer/dashboard">My Dashboard</NavButton>}
           {/* --- END OF UPDATED LINKS --- */}
         </ul>
       </div>
@@ -36,10 +43,24 @@ export default function Navbar() {
       <div className='flex items-center gap-4'>
         {user ? (
           <>
-            {canOrganize && (
-              <Link to="/addevent" className='bg-linear-to-r from-purple-500 to-pink-500 text-white px-5 py-3 rounded-xl font-semibold'>
-                Add Event
-              </Link>
+            {/* 3. This is the new conditional logic for the "Add Event" button */}
+            {isOrganizer && (
+              user.eventCreationLimit > 0 ? (
+                <Link 
+                  to="/addevent" 
+                  className='bg-linear-to-r from-purple-500 to-pink-500 text-white px-5 py-3 rounded-xl font-semibold'
+                >
+                  Add Event
+                </Link>
+              ) : (
+                <button 
+                  className='bg-gray-500 text-gray-300 px-5 py-3 rounded-xl font-semibold cursor-not-allowed'
+                  disabled
+                  title="You have reached your event creation limit."
+                >
+                  Add Event
+                </button>
+              )
             )}
             <button onClick={logout} className='text-gray-300 hover:text-white'>
               Logout

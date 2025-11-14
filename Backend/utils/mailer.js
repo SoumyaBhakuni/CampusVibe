@@ -92,7 +92,10 @@ export const sendAttendanceReportEmail = async ({ employee, event, classes, comm
     classTables += `<h4>For your class: ${classKey}</h4><ul>${studentList}</ul><hr>`;
   }
 
-  const committeeListHtml = committee.map(m => `<li>${m.Student.name} (Roll: ${m.Student.classRollNo}, ${m.Student.Course.courseName})</li>`).join('');
+  // --- THIS IS THE FIX ---
+  // The variable was `committee.map` but the arg was `committeeList`
+  const committeeListHtml = committeeList.map(m => `<li>${m.Student.name} (Roll: ${m.Student.classRollNo}, ${m.Student.Course.courseName})</li>`).join('');
+  // --- END OF FIX ---
 
   const mailOptions = {
     from: `"CampusVibe System" <${process.env.EMAIL_USER}>`,

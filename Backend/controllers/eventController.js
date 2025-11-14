@@ -19,8 +19,18 @@ export const addEvent = async (req, res) => {
     const {
       eventName, eventDesc, startTime, endTime, venue,
       clubId, contactDetails, registrationSchema, registrationType,
-      isPaidEvent, hasLeaderboard, parentId, showLeaderboardMarks
+      isPaidEvent, hasLeaderboard, parentId, showLeaderboardMarks,
+      registrationLocked
     } = req.body;
+    
+    // --- NEW VALIDATION BLOCK ---
+    if (!eventName || !startTime || !endTime || !venue || !contactDetails) {
+      await t.rollback();
+      return res.status(400).json({
+        message: 'Event Name, Start Time, End Time, Venue, and Contact Details are required.'
+      });
+    }
+    // --- END VALIDATION BLOCK ---
 
     // --- NEW FILE UPLOAD LOGIC ---
     let bannerUrl = null;
@@ -48,7 +58,7 @@ export const addEvent = async (req, res) => {
       isPaidEvent,
       hasLeaderboard,
       showLeaderboardMarks: showLeaderboardMarks || false,
-      registrationLocked: false,
+      registrationLocked: registrationLocked || false, 
     }, { transaction: t });
 
     // Decrement the organizer's limit
@@ -66,27 +76,27 @@ export const addEvent = async (req, res) => {
 };
 
 // =================================================================
-// ✅ 2. GET ALL PUBLIC EVENTS (Corrected for "?type=Fest" filter)
+// ✅ 2. GET ALL PUBLIC EVENTS (REFACTORED - CORRECT LOGIC)
 // =================================================================
 export const getEvents = async (req, res) => {
   try {
-    // --- THIS IS THE NEW LOGIC ---
     let whereClause = {
       endTime: { [Op.gte]: new Date() } // Only show future events
     };
     
-    // Check for our new query parameter
     if (req.query.type === 'Fest') {
-      // A "Fest" is a parent event, which we defined as having 'parentId: null'
       whereClause.parentId = null;
+    } else if (req.query.include === 'all') {
+      whereClause = {}; // For Admin
     }
-    // --- END OF NEW LOGIC ---
+    // Default (no query) will now return all events (parent and sub)
 
     const events = await db.Event.findAll({
-      where: whereClause, // Apply the dynamic where clause
+      where: whereClause,
       include: [
         { model: db.Club, attributes: ['clubName'] },
-        { model: db.User, as: 'Organizer', attributes: ['email'] }
+        { model: db.User, as: 'Organizer', attributes: ['email'] },
+        { model: db.Event, as: 'ParentEvent', attributes: ['eventName'] }
       ],
       order: [['startTime', 'ASC']]
     });
@@ -136,12 +146,10 @@ export const deleteEvent = async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    if (userRole !== 'Admin' && event.organizerId !== userId) {
+    if (userRole !== 'EventAdmin' && event.organizerId !== userId) {
       return res.status(403).json({ message: 'User not authorized to delete this event' });
     }
     
-    // (Add 'sendEventCanceledEmail' logic here)
-
     await event.destroy(); // 'onDelete: CASCADE' handles the rest
 
     res.status(200).json({ message: 'Event and all associated data successfully deleted.' });
@@ -149,5 +157,82 @@ export const deleteEvent = async (req, res) => {
   } catch (error) {
     console.error('Error deleting event:', error);
     res.status(500).json({ message: 'Error deleting event' });
+  }
+};
+
+// =================================================================
+// ✅ 5. GET EVENT LEADERBOARD (NEW FUNCTION)
+// =================================================================
+export const getEventLeaderboard = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const leaderboard = await db.Leaderboard.findAll({
+      where: { eventId: id },
+      order: [['rank', 'ASC']],
+    });
+    
+    if (!leaderboard) {
+      return res.status(404).json({ message: 'Leaderboard not found for this event' });
+    }
+    
+    res.status(200).json(leaderboard);
+    
+  } catch (error) {
+    console.error('Error fetching leaderboard:', error);
+    res.status(500).json({ message: 'Error fetching leaderboard' });
+  }
+};
+
+// =================================================================
+// ✅ 6. UPDATE EVENT (NEW FUNCTION)
+// =================================================================
+export const updateEvent = async (req, res) => {
+  const { id } = req.params;
+  const organizerId = req.user.id;
+
+  try {
+    const event = await db.Event.findByPk(id);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // --- CRITICAL OWNERSHIP CHECK ---
+    if (event.organizerId !== organizerId) {
+      return res.status(403).json({ message: 'User not authorized to update this event' });
+    }
+
+    const {
+      eventName, eventDesc, startTime, endTime, venue,
+      clubId, contactDetails
+    } = req.body;
+
+    // --- Update Text/JSON Fields ---
+    // Only update fields that are provided in the request
+    if (eventName) event.eventName = eventName;
+    if (eventDesc) event.eventDesc = eventDesc;
+    if (startTime) event.startTime = startTime;
+    if (endTime) event.endTime = endTime;
+    if (venue) event.venue = venue;
+    if (clubId) event.clubId = clubId;
+    if (contactDetails) event.contactDetails = JSON.parse(contactDetails);
+    
+    // (Note: Core rules like registrationType, isPaidEvent, etc., are NOT editable)
+
+    // --- Update Files (if new ones are uploaded) ---
+    if (req.files) {
+      if (req.files['banner'] && req.files['banner'][0]) {
+        event.bannerUrl = `/uploads/${req.files['banner'][0].filename}`;
+      }
+      if (req.files['paymentQRCodes'] && req.files['paymentQRCodes'].length > 0) {
+        event.paymentQRCodes = req.files['paymentQRCodes'].map(file => `/uploads/${file.filename}`);
+      }
+    }
+
+    const updatedEvent = await event.save();
+    res.status(200).json(updatedEvent);
+
+  } catch (error) {
+    console.error('Error updating event:', error);
+    res.status(500).json({ message: 'Error updating event', error: error.message });
   }
 };

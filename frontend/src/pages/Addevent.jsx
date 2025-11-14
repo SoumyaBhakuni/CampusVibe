@@ -24,8 +24,10 @@ export default function Addevent() {
     isPaidEvent: false,
     hasLeaderboard: false,
     showLeaderboardMarks: false,
+    // --- UPDATED FOR FORM BUILDER ---
     // Step 3: Form
-    registrationSchema: '', // Placeholder for a real JSON form builder
+    registrationSchema: [], // Now an array to hold question objects
+    // --- END UPDATE ---
     // Step 4: Files
     banner: null,
     paymentQRCodes: [],
@@ -35,7 +37,6 @@ export default function Addevent() {
   useEffect(() => {
     const fetchClubs = async () => {
       try {
-        // This is our new public route
         const res = await fetch('http://localhost:5000/api/clubs');
         if (res.ok) {
           setClubs(await res.json());
@@ -63,6 +64,34 @@ export default function Addevent() {
       setFormData(prev => ({ ...prev, paymentQRCodes: files })); // Multiple files
     }
   };
+  
+  // --- NEW FUNCTIONS FOR FORM BUILDER ---
+  const addSchemaField = (type) => {
+    setFormData(prev => ({
+      ...prev,
+      registrationSchema: [
+        ...prev.registrationSchema,
+        { id: Date.now(), type: type, label: '', required: true }
+      ]
+    }));
+  };
+
+  const removeSchemaField = (id) => {
+    setFormData(prev => ({
+      ...prev,
+      registrationSchema: prev.registrationSchema.filter(field => field.id !== id)
+    }));
+  };
+
+  const updateSchemaField = (id, property, value) => {
+    setFormData(prev => ({
+      ...prev,
+      registrationSchema: prev.registrationSchema.map(field => 
+        field.id === id ? { ...field, [property]: value } : field
+      )
+    }));
+  };
+  // --- END NEW FUNCTIONS ---
 
   const handleNext = () => setStep(prev => prev + 1);
   const handlePrev = () => setStep(prev => prev - 1);
@@ -80,28 +109,29 @@ export default function Addevent() {
         return;
       }
 
-      // 1. Create FormData
       const data = new FormData();
       
-      // 2. Append all string/boolean/JSON data
       data.append('eventName', formData.eventName);
       data.append('eventDesc', formData.eventDesc);
       data.append('startTime', formData.startTime);
       data.append('endTime', formData.endTime);
       data.append('venue', formData.venue);
-      data.append('contactDetails', JSON.stringify({ email: formData.contactDetails })); // Send as JSON string
+      data.append('contactDetails', JSON.stringify({ email: formData.contactDetails }));
       data.append('registrationType', formData.registrationType);
       data.append('isPaidEvent', formData.isPaidEvent);
       data.append('hasLeaderboard', formData.hasLeaderboard);
       data.append('showLeaderboardMarks', formData.showLeaderboardMarks);
-      data.append('registrationLocked', true); // Lock the form on creation
+      data.append('registrationLocked', false); // Default to open
+
       if (formData.clubId) {
         data.append('clubId', formData.clubId);
       }
-      // (We skip registrationSchema for now, as it's a placeholder)
-      // data.append('registrationSchema', JSON.stringify(formData.registrationSchema));
+      
+      // --- UPDATED FOR FORM BUILDER ---
+      // Send the custom form schema to the backend
+      data.append('registrationSchema', JSON.stringify(formData.registrationSchema));
+      // --- END UPDATE ---
 
-      // 3. Append files
       if (formData.banner) {
         data.append('banner', formData.banner);
       }
@@ -111,12 +141,10 @@ export default function Addevent() {
         }
       }
 
-      // 4. Send to the backend
       const res = await fetch('http://localhost:5000/api/events', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          // 'Content-Type' is set automatically by browser for FormData
         },
         body: data,
       });
@@ -127,22 +155,19 @@ export default function Addevent() {
       }
 
       alert('Event created successfully!');
-      // On success, go to the organizer dashboard
       navigate('/organizer/dashboard');
 
     } catch (err) {
       setError(err.message);
-      setStep(1); // Go back to first step on error
+      setStep(1); 
     } finally {
       setLoading(false);
     }
   };
   
-  // Helper for progress bar
   const progress = (step / 4) * 100;
 
   return (
-    // Re-using your original dark theme
     <div className='min-h-screen bg-linear-to-br from-slate-900 via-purple-900 to-slate-900 flex justify-center items-center p-6 text-white'>
       <form onSubmit={handleSubmit} className='bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8 w-full max-w-3xl'>
         {/* Header */}
@@ -151,8 +176,6 @@ export default function Addevent() {
             Create New Event
           </h2>
           <p className='text-gray-400 mt-2'>Step {step} of 4</p>
-
-          {/* Progress Bar */}
           <div className="w-full bg-white/10 rounded-full h-2.5 mt-4">
             <div className="bg-linear-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all" style={{ width: `${progress}%` }}></div>
           </div>
@@ -230,15 +253,55 @@ export default function Addevent() {
           </div>
         )}
 
-        {/* --- STEP 3: Form Builder (Placeholder) --- */}
+        {/* --- STEP 3: Form Builder (REFACTORED) --- */}
         {step === 3 && (
           <div className="space-y-4">
             <h3 className="text-xl font-semibold">Step 3: Custom Registration Form</h3>
-            <div className="bg-white/5 p-6 rounded-lg border border-white/10 text-gray-300">
-              <p>A "Form Builder" UI will go here.</p>
-              <p className="text-sm text-gray-400 mt-2">For now, the system will automatically add the required fields (like 'Team Name' or 'Payment Proof') based on your rules from Step 2.</p>
-              {/* <textarea name="registrationSchema" onChange={handleChange} placeholder="Form Builder JSON (placeholder)..." className="input-field mt-4" /> */}
+            <p className="text-gray-400 text-sm">Add custom fields to your registration form. Default fields (like Team Name or Payment Proof) will be added automatically based on your rules from Step 2.</p>
+            
+            <div className="flex gap-2">
+              <button type="button" onClick={() => addSchemaField('text')} className="admin-button">Add Text Field</button>
+              <button type="button" onClick={() => addSchemaField('email')} className="admin-button">Add Email Field</button>
+              <button type="button" onClick={() => addSchemaField('tel')} className="admin-button">Add Phone Field</button>
             </div>
+
+            <div className="space-y-3 max-h-60 overflow-y-auto p-2">
+              {formData.registrationSchema.length === 0 && (
+                <p className="text-gray-500 text-center p-4">No custom fields added.</p>
+              )}
+              {formData.registrationSchema.map((field, index) => (
+                <div key={field.id} className="bg-white/5 p-4 rounded-lg border border-white/10">
+                  <div className="flex justify-between items-center gap-4">
+                    <input 
+                      type="text"
+                      placeholder={`Question Label (e.g., T-shirt Size)`}
+                      value={field.label}
+                      onChange={(e) => updateSchemaField(field.id, 'label', e.target.value)}
+                      className="input-field flex-grow"
+                    />
+                    <div className="flex items-center gap-2">
+                      <label htmlFor={`required-${field.id}`} className="text-sm">Required</label>
+                      <input
+                        type="checkbox"
+                        id={`required-${field.id}`}
+                        checked={field.required}
+                        onChange={(e) => updateSchemaField(field.id, 'required', e.target.checked)}
+                        className="w-5 h-5"
+                      />
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => removeSchemaField(field.id)}
+                      className="text-red-400 hover:text-red-300 font-bold text-2xl"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Field Type: {field.type}</p>
+                </div>
+              ))}
+            </div>
+
             <div className='flex justify-between pt-4'>
               <button type="button" onClick={handlePrev} className='bg-white/10 text-gray-300 px-8 py-3 rounded-xl font-semibold'>
                 Back
@@ -259,7 +322,6 @@ export default function Addevent() {
               <input type="file" name="banner" onChange={handleFileChange} accept='image/*' className="input-file" />
             </div>
             
-            {/* Conditional field for paid events */}
             {formData.isPaidEvent && (
               <div>
                 <label className='block text-gray-300 font-medium mb-2'>Payment QR Codes (Up to 5)</label>
