@@ -1,12 +1,15 @@
 import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth'; // <-- ✅ CORRECTED IMPORT PATH
+import { useAuth } from '../hooks/useAuth'; // <-- This should be hooks/useAuth
 
 export default function Navbar() {
-  const { user, logout } = useAuth(); // This will now work
+  const { user, logout } = useAuth();
 
-  const isAdmin = user && user.role === 'Admin';
-  const canOrganize = user && (user.role.includes('Organizer') || isAdmin);
+  // --- START OF UPDATED LOGIC ---
+  const isEventAdmin = user && user.role === 'EventAdmin';
+  const isAcademicAdmin = user && user.role === 'AcademicAdmin';
+  const canOrganize = user && (user.role.includes('Organizer') || isEventAdmin);
+  // --- END OF UPDATED LOGIC ---
 
   return (
     <nav className='flex items-center px-8 py-4 bg-slate-900/80 backdrop-blur-lg border-b border-white/10 justify-between sticky top-0 z-50'>
@@ -21,8 +24,12 @@ export default function Navbar() {
           <NavButton to="/">Home</NavButton>
           <NavButton to="/events">Events</NavButton>
           <NavButton to="/clubs">Clubs</NavButton>
-          {isAdmin && <NavButton to="/admin/dashboard">Admin</NavButton>}
+          
+          {/* --- START OF UPDATED LINKS --- */}
+          {isEventAdmin && <NavButton to="/admin/dashboard">Event Admin</NavButton>}
+          {isAcademicAdmin && <NavButton to="/academic/dashboard">Academic Admin</NavButton>}
           {canOrganize && <NavButton to="/organizer/dashboard">My Dashboard</NavButton>}
+          {/* --- END OF UPDATED LINKS --- */}
         </ul>
       </div>
 
@@ -53,7 +60,7 @@ export default function Navbar() {
   );
 }
 
-// Helper component for NavLinks
+// Helper component
 const NavButton = ({ to, children }) => (
   <li>
     <NavLink

@@ -3,7 +3,7 @@ import { createOrganizerUser } from './authController.js';
 import { Op } from 'sequelize';
 
 // =================================================================
-// ✅ 1. EVENT REQUEST MANAGEMENT
+// ✅ 1. EVENT REQUEST MANAGEMENT (Unchanged)
 // =================================================================
 export const getPendingAdminRequests = async (req, res) => {
   try {
@@ -69,7 +69,7 @@ export const rejectEventRequest = async (req, res) => {
 };
 
 // =================================================================
-// ✅ 2. GENERIC CRUD CONTROLLER FACTORY
+// ✅ 2. GENERIC CRUD CONTROLLER FACTORY (For Event Assets)
 // =================================================================
 const createCrudController = (modelName) => {
   const Model = db[modelName];
@@ -128,13 +128,7 @@ const createCrudController = (modelName) => {
 };
 
 // =================================================================
-// ✅ 3. EXPORT ALL CRUD CONTROLLERS
+// ✅ 3. EXPORT EVENT ASSET CRUD CONTROLLERS
 // =================================================================
-export const studentController = createCrudController('Student');
-export const employeeController = createCrudController('Employee');
-export const departmentController = createCrudController('Department');
-export const courseController = createCrudController('Course');
-export const subjectController = createCrudController('Subject');
 export const resourceController = createCrudController('Resource');
 export const clubController = createCrudController('Club');
-// (TimeTable/TimeTableEntry need custom logic, not simple CRUD)

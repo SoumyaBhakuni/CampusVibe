@@ -58,26 +58,24 @@ export const protect = async (req, res, next) => {
 };
 
 // =================================================================
-// ✅ 2. "isAdmin" (New Role-Based Middleware)
-// This checks if the user is an Admin.
-// It must be used *after* the "protect" middleware.
+// ✅ 2. "isEventAdmin" (Renamed from isAdmin)
+// This checks if the user is an EventAdmin.
 // =================================================================
-export const isAdmin = (req, res, next) => {
-  if (req.user && req.user.role === 'Admin') {
+export const isEventAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'EventAdmin') {
     next();
   } else {
-    res.status(403).json({ message: 'Forbidden: Admin access only.' });
+    res.status(403).json({ message: 'Forbidden: Event Admin access only.' });
   }
 };
 
 // =================================================================
-// ✅ 3. "isOrganizer" (New Role-Based Middleware)
-// This checks if the user is an Organizer OR an Admin (since Admins can do everything).
-// It must be used *after* the "protect" middleware.
+// ✅ 3. "isOrganizer" (Updated to include EventAdmin)
+// This checks if the user is an Organizer OR an EventAdmin.
 // =================================================================
 export const isOrganizer = (req, res, next) => {
   const userRole = req.user.role;
-  if (req.user && (userRole === 'Organizer' || userRole === 'SubOrganizer' || userRole === 'Admin')) {
+  if (req.user && (userRole === 'Organizer' || userRole === 'SubOrganizer' || userRole === 'EventAdmin')) {
     next();
   } else {
     res.status(403).json({ message: 'Forbidden: Organizer or Admin access required.' });
@@ -85,9 +83,7 @@ export const isOrganizer = (req, res, next) => {
 };
 
 // =================================================================
-// ✅ 4. "checkPasswordChange" (New Flow-Control Middleware)
-// This checks if a user is required to change their password.
-// If true, it ONLY allows them to access the 'change-password' route.
+// ✅ 4. "checkPasswordChange" (Kept as-is)
 // =================================================================
 export const checkPasswordChange = (req, res, next) => {
   // Check if the user is required to change their password
@@ -107,5 +103,17 @@ export const checkPasswordChange = (req, res, next) => {
   } else {
     // Not required to change password, proceed to any route
     next();
+  }
+};
+
+// =================================================================
+// ✅ 5. "isAcademicAdmin" (NEW)
+// This checks if the user is an AcademicAdmin.
+// =================================================================
+export const isAcademicAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'AcademicAdmin') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Forbidden: Academic Admin access only.' });
   }
 };

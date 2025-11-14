@@ -41,12 +41,14 @@ export const AuthProvider = ({ children }) => {
     // --- NEW ROLE-BASED REDIRECTION ---
     if (data.mustChangePassword) {
       navigate('/change-password');
-    } else if (data.role === 'Admin') {
+    } else if (data.role === 'EventAdmin') { // <-- UPDATED
       navigate('/admin/dashboard');
+    } else if (data.role === 'AcademicAdmin') { // <-- NEW
+      navigate('/academic/dashboard');
     } else if (data.role.includes('Organizer')) {
       navigate('/organizer/dashboard');
     } else {
-      navigate('/');
+      navigate('/'); // This is what's happening to your 'Admin' role
     }
   };
 

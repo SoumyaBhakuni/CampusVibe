@@ -10,13 +10,13 @@ export default function AdminDashboard() {
     { id: 'requests', label: 'Event Requests' },
     { id: 'users', label: 'Manage Users' },
     { id: 'clubs', label: 'Manage Clubs' },
-    { id: 'academic', label: 'Academic Core' },
+    { id: 'resources', label: 'Manage Resources' }, // <-- ADDED THIS
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-purple-900 p-8 text-white">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">Admin Dashboard</h1>
+        <h1 className="text-4xl font-bold mb-8">Event Admin Dashboard</h1> {/* <-- RENAMED */}
 
         {/* Tab Navigation */}
         <div className="flex space-x-2 mb-6 border-b border-white/10">
@@ -40,7 +40,7 @@ export default function AdminDashboard() {
           {activeTab === 'requests' && <ManageEventRequests />}
           {activeTab === 'users' && <ManageUsers />}
           {activeTab === 'clubs' && <ManageClubs />}
-          {activeTab === 'academic' && <ManageAcademic />}
+          {activeTab === 'resources' && <ManageResources />} {/* <-- ADDED THIS */}
         </div>
       </div>
     </div>
@@ -48,15 +48,14 @@ export default function AdminDashboard() {
 }
 
 // ===================================================================
-// TAB 1: MANAGE EVENT REQUESTS
+// TAB 1: MANAGE EVENT REQUESTS (Unchanged)
 // ===================================================================
 const ManageEventRequests = () => {
+  // ... (This component code is unchanged) ...
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { getToken } = useAuth();
-
-  // Memoize fetchRequests to prevent unnecessary re-renders
   const fetchRequests = useCallback(async () => {
     try {
       setLoading(true);
@@ -76,26 +75,21 @@ const ManageEventRequests = () => {
     } finally {
       setLoading(false);
     }
-  }, [getToken]); // Add getToken to dependency array
-
+  }, [getToken]);
   useEffect(() => {
     fetchRequests();
-  }, [fetchRequests]); // Run on mount
-
+  }, [fetchRequests]);
   const handleApprove = async (requestId) => {
-    // This is the "Approve (Step 1)" logic.
     const eventCreationLimit = prompt("Enter event creation limit for this user:", "1");
     if (!eventCreationLimit || isNaN(eventCreationLimit)) {
       alert("Invalid limit. Approval cancelled.");
       return;
     }
-    
     const accessExpiryDate = prompt("Enter access expiry date (YYYY-MM-DD):", "2025-12-31");
     if (!accessExpiryDate) {
       alert("Invalid date. Approval cancelled.");
       return;
     }
-
     try {
       const token = getToken();
       const res = await fetch(`http://localhost:5000/api/admin/requests/${requestId}/approve`, {
@@ -109,19 +103,17 @@ const ManageEventRequests = () => {
           accessExpiryDate 
         }),
       });
-
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.message || 'Failed to approve request');
       }
       const data = await res.json();
       alert(`Request approved! User account created.\nEmail: ${data.userEmail}\nTemp Password: ${data.tempPassword}`);
-      fetchRequests(); // Refresh the list
+      fetchRequests();
     } catch (err) {
       alert(`Error: ${err.message}`);
     }
   };
-
   const handleReject = async (requestId) => {
     if (!window.confirm("Are you sure you want to reject this request?")) return;
     try {
@@ -135,12 +127,11 @@ const ManageEventRequests = () => {
         throw new Error(errData.message || 'Failed to reject request');
       }
       alert('Request rejected.');
-      fetchRequests(); // Refresh the list
+      fetchRequests();
     } catch (err) {
       alert(`Error: ${err.message}`);
     }
   };
-
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-4">Pending Event Requests</h2>
@@ -177,19 +168,14 @@ const ManageEventRequests = () => {
 };
 
 // ===================================================================
-// TAB 2: MANAGE USERS
+// TAB 2: MANAGE USERS (Unchanged)
 // ===================================================================
 const ManageUsers = () => {
+  // ... (This component code is unchanged) ...
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const { getToken } = useAuth();
-
-  // We need to create this route in `adminRoutes.js`
-  // GET /api/admin/users
-  // And the controller function in `adminController.js`
   const fetchUsers = useCallback(async () => {
-    // ... fetch logic ...
-    // For now, let's mock it
     setUsers([
       { id: 1, email: "your-first-user@example.com", role: "Admin", accessExpiryDate: null },
       { id: 2, email: "organizer@test.com", role: "Organizer", accessExpiryDate: "2025-12-31" },
@@ -197,21 +183,15 @@ const ManageUsers = () => {
     ]);
     setLoading(false);
   }, [getToken]);
-
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
-
   const handleReactivate = (userId) => {
-    // TODO: Call API (e.g., PUT /api/admin/users/:id/reactivate)
     alert(`Re-activating user ${userId}... (logic to be built)`);
   };
-
   const handleRevoke = (userId) => {
-    // TODO: Call API (e.g., PUT /api/admin/users/:id/revoke)
     alert(`Revoking access for user ${userId}... (logic to be built)`);
   };
-
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-4">Manage Users</h2>
@@ -242,14 +222,13 @@ const ManageUsers = () => {
 };
 
 // ===================================================================
-// TAB 3: MANAGE CLUBS
+// TAB 3: MANAGE CLUBS (Unchanged)
 // ===================================================================
 const ManageClubs = () => {
+  // ... (This component code is unchanged) ...
   const [clubs, setClubs] = useState([]);
   const [loading, setLoading] = useState(true);
   const { getToken } = useAuth();
-  
-  // Fetch from the *public* route
   const fetchClubs = useCallback(async () => {
     try {
       setLoading(true);
@@ -258,16 +237,13 @@ const ManageClubs = () => {
       setClubs(data);
     } catch (err) { console.error(err); } finally { setLoading(false); }
   }, []);
-
   useEffect(() => {
     fetchClubs();
   }, [fetchClubs]);
-
   const handleCreateClub = async () => {
     const clubName = prompt("Enter new club name:");
     const clubDescription = prompt("Enter club description:");
     if (!clubName) return;
-
     try {
       const token = getToken();
       await fetch('http://localhost:5000/api/admin/clubs', {
@@ -278,28 +254,20 @@ const ManageClubs = () => {
         },
         body: JSON.stringify({ clubName, clubDescription }),
       });
-      fetchClubs(); // Refresh list
+      fetchClubs();
     } catch (err) {
       alert("Error creating club");
     }
   };
-
   const handleDeleteClub = async (clubId) => {
     if (!window.confirm("Are you sure you want to delete this club?")) return;
     try {
       const token = getToken();
-      // TODO: We must create this DELETE /api/admin/clubs/:id route and controller
       alert(`Deleting club ${clubId}... (logic to be built)`);
-      // await fetch(`http://localhost:5000/api/admin/clubs/${clubId}`, {
-      //   method: 'DELETE',
-      //   headers: { 'Authorization': `Bearer ${token}` },
-      // });
-      // fetchClubs(); // Refresh list
     } catch (err) {
       alert("Error deleting club");
     }
   };
-
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-4">Manage Clubs</h2>
@@ -324,25 +292,16 @@ const ManageClubs = () => {
 };
 
 // ===================================================================
-// TAB 4: MANAGE ACADEMIC CORE
+// TAB 4: MANAGE RESOURCES (NEW)
 // ===================================================================
-const ManageAcademic = () => {
+const ManageResources = () => {
+  // This is a placeholder. We will build this out.
   return (
     <div>
-      <h2 className="text-2xl font-semibold">Manage Academic Core</h2>
+      <h2 className="text-2xl font-semibold">Manage Resources</h2>
       <p className="text-gray-400">
-        This section will contain the CRUD (Create, Read, Update, Delete)
-        interfaces for:
+        This section will contain the CRUD interface for Resources.
       </p>
-      <ul className="list-disc list-inside text-gray-300 mt-4">
-        <li>Students</li>
-        <li>Employees (Faculty & Staff)</li>
-        <li>Departments</li>
-        <li>Courses (Programs)</li>
-        <li>Subjects (Classes)</li>
-        <li>Resources (and their Incharges)</li>
-        <li>TimeTables</li>
-      </ul>
     </div>
   );
 };

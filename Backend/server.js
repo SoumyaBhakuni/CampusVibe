@@ -16,6 +16,8 @@ import organizerRoutes from './routes/organizerRoutes.js';
 import registrationRoutes from './routes/registrationRoutes.js';
 import clubRoutes from './routes/clubRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
+import academicAdminRoutes from './routes/academicAdminRoutes.js'; // <-- 1. ADD THIS IMPORT
+import eventRequestRoutes from './routes/eventRequestRoutes.js'; // <-- 1. ADD THIS IMPORT
 
 // --- (Step 2) IMPORT AUTOMATION CONTROLLER ---
 import { runOffboardingScript, sendExpiryWarning } from './controllers/automationController.js';
@@ -50,15 +52,17 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
   }
 })();
 
-// --- (Step 4) USE ALL 9 ROUTE FILES ---
+// --- (Step 4) USE ALL 10 ROUTE FILES ---
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/requirements', requirementRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/academic-admin', academicAdminRoutes); // <-- 2. ADD THIS LINE
 app.use('/api/organizer', organizerRoutes);
 app.use('/api/register', registrationRoutes);
 app.use('/api/clubs', clubRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/event-requests', eventRequestRoutes); // <-- 2. ADD THIS LINE
 
 // ✅ Default route
 app.get('/', (req, res) => {
