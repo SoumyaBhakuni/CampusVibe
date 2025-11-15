@@ -353,3 +353,48 @@ export const checkInMember = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Add these two new functions at the end of the file,
+// before the final `};`
+
+// =================================================================
+// ✅ 13. GET ALL TEAMS FOR AN EVENT (for Leaderboard)
+// =================================================================
+export const getAllEventTeams = async (req, res) => {
+  const { eventId } = req.params;
+  try {
+    const teams = await db.Team.findAll({
+      where: { 
+        eventId,
+        // Only get teams that are verified or in a free event
+        paymentStatus: { [Op.in]: ['Verified', 'N/A'] } 
+      },
+      include: [{ model: db.Student, as: 'TeamLeader', attributes: ['name'] }]
+    });
+    res.status(200).json(teams);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// =================================================================
+// ✅ 14. GET ALL INDIVIDUALS FOR AN EVENT (for Leaderboard)
+// =================================================================
+export const getAllEventIndividuals = async (req, res) => {
+  const { eventId } = req.params;
+  try {
+    const individuals = await db.EventMember.findAll({
+      where: { 
+        eventId, 
+        teamId: null, 
+        role: 'Participant',
+        // Only get participants who are verified or in a free event
+        paymentStatus: { [Op.in]: ['Verified', 'N/A'] }
+      },
+      include: [{ model: db.Student, attributes: ['name', 'studentId'] }]
+    });
+    res.status(200).json(individuals);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

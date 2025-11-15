@@ -1,0 +1,31 @@
+JSON Key,Value Type,Description
+courseId,Number (FK),"The ID of the Course (e.g., 1 for B.Tech)."
+year,Number,"The academic year (e.g., 4)."
+section,String,"The class section (e.g., ""A"")."
+subjectCode,String (FK),"The unique Subject Code (e.g., ""CS401"")."
+employeeId,String (FK),"The Employee ID of the faculty teaching the class (e.g., ""E901"")."
+day,String,"Day of the week (e.g., ""Monday"")."
+timeSlot,String,"The time range (e.g., ""09:00-11:00"")."
+roomNo,String,The room number.
+[
+  {
+    "courseId": 1,
+    "year": 4,
+    "section": "A",
+    "subjectCode": "CS401",
+    "employeeId": "E901",
+    "day": "Monday",
+    "timeSlot": "09:00-11:00",
+    "roomNo": "A-301"
+  },
+  {
+    "courseId": 1,
+    "year": 4,
+    "section": "A",
+    "subjectCode": "MA402",
+    "employeeId": "E902",
+    "day": "Tuesday",
+    "timeSlot": "11:00-13:00",
+    "roomNo": "A-301"
+  }
+]

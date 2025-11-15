@@ -45,7 +45,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
     // All associations are now defined in './models/index.js'
     // -----------------------------------------------------------------
     
-    await db.sequelize.sync({ alter: true });
+    await db.sequelize.sync({ alter : true });
     console.log('✅ Sequelize models synced with Neon DB');
   } catch (err) {
     console.error('❌ DB connection or sync failed:', err.message);

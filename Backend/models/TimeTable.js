@@ -2,8 +2,8 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/db.js';
 const TimeTable = sequelize.define('TimeTable', { // This is the "Group"
-  timeTableId: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-  courseId: { type: DataTypes.INTEGER, allowNull: false }, // FK to Course
+  timeTableId: { type: DataTypes.STRING, allowNull: false, primaryKey: true }, // MODIFIED
+  courseId: { type: DataTypes.STRING, allowNull: false }, // MODIFIED to STRING (FK)
   year: { type: DataTypes.INTEGER, allowNull: false },
   section: { type: DataTypes.STRING, allowNull: false },
 }, {

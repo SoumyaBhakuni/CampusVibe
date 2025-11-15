@@ -8,6 +8,6 @@ const Student = sequelize.define('Student', {
   classRollNo: { type: DataTypes.STRING, allowNull: false },
   year: { type: DataTypes.INTEGER, allowNull: false },
   section: { type: DataTypes.STRING, allowNull: false },
-  courseId: { type: DataTypes.INTEGER, allowNull: false }, // FK to Course
+  courseId: { type: DataTypes.STRING, allowNull: false }, // MODIFIED to STRING (FK)
 });
 export default Student;

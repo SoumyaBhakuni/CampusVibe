@@ -16,8 +16,8 @@ const Event = sequelize.define('Event', {
   // --- NEW FIELDS & FOREIGN KEYS FROM OUR ERD ---
   organizerId: { type: DataTypes.INTEGER, allowNull: false }, // FK to User
   parentId: { type: DataTypes.INTEGER, allowNull: true },    // FK to Event (self)
-  clubId: { type: DataTypes.INTEGER, allowNull: true },      // FK to Club
-  
+  clubId: { type: DataTypes.STRING, allowNull: true },      // FK to Club (MODIFIED to STRING)
+    
   contactDetails: { type: DataTypes.JSON, allowNull: true },
   registrationSchema: { type: DataTypes.JSON, allowNull: true },
   paymentQRCodes: { type: DataTypes.JSON, allowNull: true },

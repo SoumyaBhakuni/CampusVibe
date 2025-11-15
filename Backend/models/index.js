@@ -1,4 +1,6 @@
+// Backend/models/index.js
 import sequelize from '../config/db.js';
+import { DataTypes } from 'sequelize'; // <-- Import DataTypes for explicit FK definitions
 
 // Import all models
 import Student from './Student.js';
@@ -51,31 +53,58 @@ const db = {
 
 // --- (Step 1) DEFINE ALL MODEL ASSOCIATIONS ---
 
-// --- Zone 1: Academic Core Associations ---
-Department.hasMany(Employee, { foreignKey: 'departmentId' });
-Employee.belongsTo(Department, { foreignKey: 'departmentId' });
-Department.hasMany(Course, { foreignKey: 'departmentId' });
-Course.belongsTo(Department, { foreignKey: 'departmentId' });
+// --- Zone 1: Academic Core Associations (UPDATED FOR STRING IDs) ---
+// Department/Employee
+Department.hasMany(Employee, { foreignKey: { name: 'departmentId', type: DataTypes.STRING } });
+Employee.belongsTo(Department, { foreignKey: { name: 'departmentId', type: DataTypes.STRING } });
+Department.hasMany(Course, { foreignKey: { name: 'departmentId', type: DataTypes.STRING } });
+Course.belongsTo(Department, { foreignKey: { name: 'departmentId', type: DataTypes.STRING } });
+
+// Department/Employee Head
 Employee.hasOne(Department, { as: 'HeadedDepartment', foreignKey: 'headEmployeeId' });
 Department.belongsTo(Employee, { as: 'Head', foreignKey: 'headEmployeeId' });
-Course.hasMany(Student, { foreignKey: 'courseId' });
-Student.belongsTo(Course, { foreignKey: 'courseId' });
-Course.hasMany(Subject, { foreignKey: 'courseId' });
-Subject.belongsTo(Course, { foreignKey: 'courseId' });
-TimeTable.hasMany(TimeTableEntry, { foreignKey: 'timeTableId', onDelete: 'CASCADE' });
-TimeTableEntry.belongsTo(TimeTable, { foreignKey: 'timeTableId' });
-Course.hasOne(TimeTable, { foreignKey: 'courseId' });
-TimeTable.belongsTo(Course, { foreignKey: 'courseId' });
-Subject.hasMany(TimeTableEntry, { foreignKey: 'subjectId' });
-TimeTableEntry.belongsTo(Subject, { foreignKey: 'subjectId' });
+
+// Course/Student/Subject/TimeTable
+Course.hasMany(Student, { foreignKey: { name: 'courseId', type: DataTypes.STRING } });
+Student.belongsTo(Course, { foreignKey: { name: 'courseId', type: DataTypes.STRING } });
+
+Course.hasMany(Subject, { foreignKey: { name: 'courseId', type: DataTypes.STRING } });
+Subject.belongsTo(Course, { foreignKey: { name: 'courseId', type: DataTypes.STRING } });
+
+Course.hasOne(TimeTable, { foreignKey: { name: 'courseId', type: DataTypes.STRING } });
+TimeTable.belongsTo(Course, { foreignKey: { name: 'courseId', type: DataTypes.STRING } });
+
+// TimeTable/TimeTableEntry
+TimeTable.hasMany(TimeTableEntry, { foreignKey: { name: 'timeTableId', type: DataTypes.STRING }, onDelete: 'CASCADE' });
+TimeTableEntry.belongsTo(TimeTable, { foreignKey: { name: 'timeTableId', type: DataTypes.STRING } });
+
+// Subject/TimeTableEntry
+Subject.hasMany(TimeTableEntry, { foreignKey: { name: 'subjectId', type: DataTypes.STRING } });
+TimeTableEntry.belongsTo(Subject, { foreignKey: { name: 'subjectId', type: DataTypes.STRING } });
+
+// Employee/TimeTableEntry
 Employee.hasMany(TimeTableEntry, { foreignKey: 'employeeId' });
 TimeTableEntry.belongsTo(Employee, { foreignKey: 'employeeId' });
+
+// Resource/Employee
 Employee.hasMany(Resource, { foreignKey: 'inchargeEmployeeId' });
 Resource.belongsTo(Employee, { as: 'Incharge', foreignKey: 'inchargeEmployeeId' });
-Club.hasMany(Event, { foreignKey: 'clubId', allowNull: true, defaultValue: null });
-Event.belongsTo(Club, { foreignKey: 'clubId' });
 
-// --- Zone 2: Event Layer Associations ---
+
+// --- Zone 2: Event Layer Associations (UPDATED FOR STRING IDs) ---
+// Club/Event
+Club.hasMany(Event, { foreignKey: { name: 'clubId', type: DataTypes.STRING }, allowNull: true, defaultValue: null });
+Event.belongsTo(Club, { foreignKey: { name: 'clubId', type: DataTypes.STRING } });
+
+// Event/EventRequirement/Resource
+Event.hasMany(EventRequirement, { foreignKey: 'eventId', onDelete: 'CASCADE' });
+EventRequirement.belongsTo(Event, { foreignKey: 'eventId' });
+
+Resource.hasMany(EventRequirement, { foreignKey: { name: 'resourceId', type: DataTypes.STRING } });
+EventRequirement.belongsTo(Resource, { foreignKey: { name: 'resourceId', type: DataTypes.STRING } });
+
+
+// --- Other Event/User/Team/Member Associations (Unchanged) ---
 User.hasMany(Event, { foreignKey: 'organizerId' });
 Event.belongsTo(User, { as: 'Organizer', foreignKey: 'organizerId' });
 Event.hasMany(Event, { as: 'SubEvents', foreignKey: 'parentId', onDelete: 'CASCADE' });
@@ -88,10 +117,6 @@ Event.hasMany(Leaderboard, { foreignKey: 'eventId', onDelete: 'CASCADE' });
 Leaderboard.belongsTo(Event, { foreignKey: 'eventId' });
 Event.hasMany(EventMember, { foreignKey: 'eventId', onDelete: 'CASCADE' });
 EventMember.belongsTo(Event, { foreignKey: 'eventId' });
-Event.hasMany(EventRequirement, { foreignKey: 'eventId', onDelete: 'CASCADE' });
-EventRequirement.belongsTo(Event, { foreignKey: 'eventId' });
-Resource.hasMany(EventRequirement, { foreignKey: 'resourceId' });
-EventRequirement.belongsTo(Resource, { foreignKey: 'resourceId' });
 Team.hasMany(EventMember, { foreignKey: 'teamId', onDelete: 'SET NULL', allowNull: true });
 EventMember.belongsTo(Team, { foreignKey: 'teamId' });
 Student.hasMany(Team, { as: 'LedTeams', foreignKey: 'teamLeaderStudentId' });
@@ -101,7 +126,7 @@ EventMember.belongsTo(Student, { foreignKey: 'memberId', constraints: false });
 Employee.hasMany(EventMember, { foreignKey: 'memberId', constraints: false, scope: { memberType: 'Employee' } });
 EventMember.belongsTo(Employee, { foreignKey: 'memberId', constraints: false });
 
-// --- Zone 3: Archive Layer Associations ---
+// --- Zone 3: Archive Layer Associations (Unchanged) ---
 EventArchive.hasMany(ParticipatedEvent, { foreignKey: 'eventArchiveId', onDelete: 'CASCADE' });
 EventArchive.hasMany(CommitteeEvent, { foreignKey: 'eventArchiveId', onDelete: 'CASCADE' });
 EventArchive.hasMany(OrganizedEvent, { foreignKey: 'eventArchiveId', onDelete: 'CASCADE' });
@@ -111,14 +136,7 @@ CommitteeEvent.belongsTo(EventArchive, { foreignKey: 'eventArchiveId' });
 OrganizedEvent.belongsTo(EventArchive, { foreignKey: 'eventArchiveId' });
 EmployeeOrganizedEvent.belongsTo(EventArchive, { foreignKey: 'eventArchiveId' });
 
-Student.hasMany(ParticipatedEvent, { foreignKey: 'studentId' });
-ParticipatedEvent.belongsTo(Student, { foreignKey: 'studentId' });
-Student.hasMany(CommitteeEvent, { foreignKey: 'studentId' });
-CommitteeEvent.belongsTo(Student, { foreignKey: 'studentId' });
-Student.hasMany(OrganizedEvent, { foreignKey: 'studentId' });
-OrganizedEvent.belongsTo(Student, { foreignKey: 'studentId' });
-Employee.hasMany(EmployeeOrganizedEvent, { foreignKey: 'employeeId' });
-EmployeeOrganizedEvent.belongsTo(Employee, { foreignKey: 'employeeId' });
+// Note: The Student/Employee IDs referenced by the archive tables are already strings (studentId, employeeId), so their FKs are implicitly strings.
 
 // Export all models and sequelize instance
 export default db;

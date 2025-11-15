@@ -9,9 +9,11 @@ import {
   addTeamMember,
   updateLeaderboard,
   getMyEvents,
-  getEventTeam,
-  removeTeamMember,
-  checkInMember // <-- 1. IMPORTED NEW FUNCTION
+getEventTeam,
+removeTeamMember,
+checkInMember,
+getAllEventTeams, // <-- 1. ADD THIS
+getAllEventIndividuals // <-- 2. ADD THIS
 } from '../controllers/organizerController.js';
 import { resourceController } from '../controllers/adminController.js';
 import { protect, isOrganizer, checkPasswordChange } from '../middleware/authMiddleware.js';
@@ -43,7 +45,13 @@ router.delete('/event/:eventId/team/:memberId', removeTeamMember); // <-- NEW: T
 // --- Leaderboard Management ---
 router.put('/event/:eventId/leaderboard', updateLeaderboard); // <-- NEW
 
-// --- 2. ADDED NEW CHECK-IN ROUTE ---
+// --- Leaderboard Management ---
+router.put('/event/:eventId/leaderboard', updateLeaderboard); // <-- This exists
+
+// --- NEW: Routes to get competitors for leaderboard ---
+router.get('/event/:eventId/teams', getAllEventTeams);
+router.get('/event/:eventId/individuals', getAllEventIndividuals);
+
 // --- Event Day Check-in ---
 router.post('/check-in', checkInMember);
 

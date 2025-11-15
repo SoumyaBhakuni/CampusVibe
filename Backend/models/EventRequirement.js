@@ -8,7 +8,7 @@ const EventRequirement = sequelize.define('EventRequirement', {
     primaryKey: true,
   },
   eventId: { type: DataTypes.INTEGER, allowNull: false },     // FK to Event
-  resourceId: { type: DataTypes.INTEGER, allowNull: false },  // FK to Resource
+  resourceId: { type: DataTypes.STRING, allowNull: false },  // FK to Resource (MODIFIED to STRING)
   quantity: { type: DataTypes.INTEGER, allowNull: false },
   status: {
     type: DataTypes.STRING,

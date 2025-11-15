@@ -377,18 +377,101 @@ const ManageTeamModal = ({ eventId, onClose }) => {
 };
 
 // ===================================================================
-// --- MODAL 3: MANAGE LEADERBOARD ---
+// --- MODAL 3: MANAGE LEADERBOARD (UPDATED) ---
 // ===================================================================
 const ManageLeaderboardModal = ({ eventId, event, currentLeaderboard, onClose, onSave }) => {
   const [scores, setScores] = useState(currentLeaderboard); 
   const [showMarks, setShowMarks] = useState(event.showLeaderboardMarks);
   const { getToken } = useAuth(); 
   
+  // --- NEW ---
+  const [competitors, setCompetitors] = useState([]); // All eligible competitors
+  const [loadingCompetitors, setLoadingCompetitors] = useState(true);
+  const [selectedCompetitor, setSelectedCompetitor] = useState(''); // For the dropdown
+  // --- END NEW ---
+
+  // --- NEW: Fetch all eligible competitors ---
+  useEffect(() => {
+    const fetchCompetitors = async () => {
+      setLoadingCompetitors(true);
+      const token = getToken();
+      const isTeamEvent = event.registrationType === 'Team';
+      const url = `http://localhost:5000/api/organizer/event/${eventId}/${isTeamEvent ? 'teams' : 'individuals'}`;
+      
+      try {
+        const res = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCompetitors(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch competitors", err);
+      } finally {
+        setLoadingCompetitors(false);
+      }
+    };
+    fetchCompetitors();
+  }, [eventId, event.registrationType, getToken]);
+  // --- END NEW ---
+
   const handleScoreChange = (index, newMarks) => {
     const updatedScores = [...scores];
     updatedScores[index].marks = parseInt(newMarks, 10) || 0;
     setScores(updatedScores);
   };
+  
+  // --- NEW: Handler to add a competitor from the dropdown ---
+  const handleAddCompetitor = () => {
+    if (!selectedCompetitor) return;
+    
+    const competitor = competitors.find(c => 
+      event.registrationType === 'Team' ? c.teamId.toString() === selectedCompetitor : c.memberId === selectedCompetitor
+    );
+    if (!competitor) return;
+
+    // Check if already in the list
+    const competitorId = event.registrationType === 'Team' ? competitor.teamId : competitor.memberId;
+    if (scores.some(s => s.competitorId === competitorId)) {
+      alert("This competitor is already on the leaderboard.");
+      return;
+    }
+
+    // Add to the scores state
+    setScores(prevScores => [
+      ...prevScores,
+      {
+        id: `new-${Date.now()}`, // A temporary unique key
+        eventId: eventId,
+        competitorId: competitorId,
+        competitorType: event.registrationType,
+        marks: 0,
+        rank: null
+      }
+    ]);
+    setSelectedCompetitor(''); // Reset dropdown
+  };
+  
+  // --- NEW: Get the name for the competitor ---
+  const getCompetitorName = (item) => {
+    if (item.competitorType === 'Team') {
+      // Find from all competitors list
+      const team = competitors.find(c => c.teamId === item.competitorId);
+      return team ? `${team.teamName} (Leader: ${team.TeamLeader?.name || 'N/A'})` : item.competitorId;
+    } else {
+      // Find from all competitors list
+      const ind = competitors.find(c => c.memberId === item.competitorId);
+      return ind ? `${ind.Student?.name || 'N/A'} (${ind.Student?.studentId || item.competitorId})` : item.competitorId;
+    }
+  };
+  
+  // --- NEW: Get options for the dropdown, filtering out those already added ---
+  const availableCompetitors = competitors.filter(c => {
+    const competitorId = event.registrationType === 'Team' ? c.teamId : c.memberId;
+    return !scores.some(s => s.competitorId === competitorId);
+  });
+  // --- END NEW ---
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -410,13 +493,44 @@ const ManageLeaderboardModal = ({ eventId, event, currentLeaderboard, onClose, o
           <input type="checkbox" checked={showMarks} onChange={e => setShowMarks(e.target.checked)} className="w-5 h-5" />
           Show Marks/Points to Public
         </label>
+        
+        {/* --- NEW: UI for adding competitors --- */}
         <hr className="border-white/10" />
+        <h4 className="text-lg font-semibold">Add Competitor</h4>
+        {loadingCompetitors ? <p>Loading eligible competitors...</p> : (
+          <div className="flex gap-2">
+            <select 
+              value={selectedCompetitor} 
+              onChange={e => setSelectedCompetitor(e.target.value)} 
+              className="input-field flex-grow"
+            >
+              <option value="">Select a competitor to add...</option>
+              {availableCompetitors.map(c => {
+                const isTeam = event.registrationType === 'Team';
+                const id = isTeam ? c.teamId : c.memberId;
+                const name = isTeam ? `${c.teamName} (Leader: ${c.TeamLeader?.name || 'N/A'})` : `${c.Student?.name} (${c.Student?.studentId})`;
+                return <option key={id} value={id}>{name}</option>;
+              })}
+            </select>
+            <button 
+              type="button" 
+              onClick={handleAddCompetitor} 
+              className="admin-button-green"
+            >
+              Add
+            </button>
+          </div>
+        )}
+        <hr className="border-white/10" />
+        {/* --- END NEW UI --- */}
         
         <div className="space-y-2">
           <h4 className="text-lg font-semibold">Edit Scores</h4>
+          {scores.length === 0 && <p className="text-gray-400">No competitors added to the leaderboard yet.</p>}
           {scores.map((item, index) => (
             <div key={item.id} className="flex justify-between items-center bg-white/10 p-3 rounded">
-              <label className="font-medium">{item.competitorId} ({item.competitorType})</label>
+              {/* --- UPDATED: Show name instead of just ID --- */}
+              <label className="font-medium">{getCompetitorName(item)}</label>
               <input 
                 type="number"
                 value={item.marks}
@@ -434,7 +548,7 @@ const ManageLeaderboardModal = ({ eventId, event, currentLeaderboard, onClose, o
 };
 
 // ===================================================================
-// --- 3. NEW MODAL COMPONENT: CHECK-IN ---
+// --- 4. NEW MODAL COMPONENT: CHECK-IN ---
 // ===================================================================
 const CheckInModal = ({ eventId, onClose }) => {
   const [studentId, setStudentId] = useState('');
