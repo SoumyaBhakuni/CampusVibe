@@ -76,7 +76,7 @@ export const addEvent = async (req, res) => {
 };
 
 // =================================================================
-// ✅ 2. GET ALL PUBLIC EVENTS (REFACTORED - CORRECT LOGIC)
+// ✅ 2. GET ALL PUBLIC EVENTS (FIXED FEST FILTER)
 // =================================================================
 export const getEvents = async (req, res) => {
   try {
@@ -84,23 +84,45 @@ export const getEvents = async (req, res) => {
       endTime: { [Op.gte]: new Date() } // Only show future events
     };
     
-    if (req.query.type === 'Fest') {
-      whereClause.parentId = null;
-    } else if (req.query.include === 'all') {
-      whereClause = {}; // For Admin
-    }
-    // Default (no query) will now return all events (parent and sub)
+    let events;
 
-    const events = await db.Event.findAll({
-      where: whereClause,
-      include: [
-        { model: db.Club, attributes: ['clubName'] },
-        { model: db.User, as: 'Organizer', attributes: ['email'] },
-        { model: db.Event, as: 'ParentEvent', attributes: ['eventName'] }
-      ],
-      order: [['startTime', 'ASC']]
-    });
+    if (req.query.type === 'Fest') {
+      // Find all events that are a parent (parentId IS NULL) AND have at least one SubEvent
+      events = await db.Event.findAll({
+        where: {
+          ...whereClause,
+          parentId: { [Op.is]: null }
+        },
+        include: [
+          { model: db.Club, attributes: ['clubName'] },
+          { model: db.User, as: 'Organizer', attributes: ['email'] },
+          { 
+            model: db.Event, 
+            as: 'SubEvents', 
+            attributes: ['id'], // Select ID for the join
+            required: true // Forces an INNER JOIN: Event must have children to be returned
+          },
+        ],
+        // Grouping required when using INNER JOIN on an included model
+        group: ['Event.id', 'Club.clubId', 'Organizer.id'],
+        order: [['startTime', 'ASC']]
+      });
+
+    } else {
+      // Default query (All Events/Admin)
+      events = await db.Event.findAll({
+        where: req.query.include === 'all' ? {} : whereClause, // Admin bypasses end time filter
+        include: [
+          { model: db.Club, attributes: ['clubName'] },
+          { model: db.User, as: 'Organizer', attributes: ['email'] },
+          { model: db.Event, as: 'ParentEvent', attributes: ['eventName'] }
+        ],
+        order: [['startTime', 'ASC']]
+      });
+    }
+
     res.json(events);
+
   } catch (error) {
     console.error('Error fetching events:', error);
     res.status(500).json({ message: 'Error fetching events' });

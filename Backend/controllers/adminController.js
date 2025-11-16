@@ -1,4 +1,4 @@
-import db from '../models/index.js'; // ✅ CORRECTED: Default import
+import db from '../models/index.js'; 
 import { createOrganizerUser } from './authController.js';
 import { Op } from 'sequelize';
 
@@ -69,18 +69,27 @@ export const rejectEventRequest = async (req, res) => {
 };
 
 // =================================================================
-// ✅ 2. GENERIC CRUD CONTROLLER FACTORY (For Event Assets)
+// ✅ 2. ROBUST GENERIC CRUD CONTROLLER FACTORY (FIXED)
 // =================================================================
 const createCrudController = (modelName) => {
-  // ... (Unchanged code)
   const Model = db[modelName];
+  // Club model uses 'clubId' as PK, so we use it for lookup
+  const primaryKey = Model.primaryKeyAttributes[0]; 
+
   return {
     create: async (req, res) => {
       try {
+        // Explicitly check for the required string ID
+        if (!req.body[primaryKey]) {
+           return res.status(400).json({ message: `${primaryKey} is required for creation.` });
+        }
+        
         const item = await Model.create(req.body);
         res.status(201).json(item);
       } catch (error) {
-        res.status(500).json({ message: `Error creating ${modelName}`, error: error.message });
+        // Log the detailed error, but return a helpful message to the client
+        console.error(`ERROR creating ${modelName}:`, error); 
+        res.status(400).json({ message: error.message || `Database validation failed during ${modelName} creation.` });
       }
     },
     getAll: async (req, res) => {
@@ -91,37 +100,17 @@ const createCrudController = (modelName) => {
         res.status(500).json({ message: `Error fetching ${modelName}`, error: error.message });
       }
     },
-    getById: async (req, res) => {
-      try {
-        const item = await Model.findByPk(req.params.id);
-        if (!item) return res.status(404).json({ message: `${modelName} not found` });
-        res.status(200).json(item);
-      } catch (error) {
-        res.status(500).json({ message: `Error fetching ${modelName}`, error: error.message });
-      }
-    },
-    update: async (req, res) => {
-      try {
-        const [updated] = await Model.update(req.body, { where: { id: req.params.id } });
-        if (updated) {
-          const updatedItem = await Model.findByPk(req.params.id);
-          res.status(200).json(updatedItem);
-        } else {
-          res.status(404).json({ message: `${modelName} not found` });
-        }
-      } catch (error) {
-        res.status(500).json({ message: `Error updating ${modelName}`, error: error.message });
-      }
-    },
     delete: async (req, res) => {
       try {
-        const deleted = await Model.destroy({ where: { id: req.params.id } });
+        // Use the primary key and the ID from the URL params for deletion
+        const deleted = await Model.destroy({ where: { [primaryKey]: req.params.id } });
         if (deleted) {
           res.status(200).json({ message: `${modelName} deleted` });
         } else {
           res.status(404).json({ message: `${modelName} not found` });
         }
       } catch (error) {
+        console.error(`ERROR deleting ${modelName}:`, error);
         res.status(500).json({ message: `Error deleting ${modelName}`, error: error.message });
       }
     },
@@ -131,11 +120,13 @@ const createCrudController = (modelName) => {
 // =================================================================
 // ✅ 3. EXPORT EVENT ASSET CRUD CONTROLLERS
 // =================================================================
-export const resourceController = createCrudController('Resource');
+// Resource controller has been moved to academicAdminController.js
+export const resourceController = createCrudController('Resource'); 
 export const clubController = createCrudController('Club');
 
+
 // =================================================================
-// ✅ 4. NEW ADMIN-SPECIFIC FUNCTIONS
+// ✅ 4. ADMIN-SPECIFIC FUNCTIONS (Unchanged)
 // =================================================================
 
 /**

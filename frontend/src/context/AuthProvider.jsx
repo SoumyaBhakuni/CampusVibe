@@ -31,25 +31,37 @@ export const AuthProvider = ({ children }) => {
     if (!res.ok) throw new Error(data.message);
 
     const userData = {
+      id: data.id, // <--- NEW: Store the user's database ID
       email: data.email,
       role: data.role,
       token: data.token,
-      eventCreationLimit: data.eventCreationLimit, // <-- ADDED THIS LINE
+      eventCreationLimit: data.eventCreationLimit,
     };
+    
+    // 1. Set localStorage IMMEDIATELY
     localStorage.setItem('user', JSON.stringify(userData));
 
-    // --- NEW ROLE-BASED REDIRECTION ---
+    // 2. Update React State
+    setUser(userData); 
+
+    // 3. Determine redirect path
+    let redirectPath;
     if (data.mustChangePassword) {
-      navigate('/change-password');
-    } else if (data.role === 'EventAdmin') { // <-- UPDATED
-      navigate('/admin/dashboard');
-    } else if (data.role === 'AcademicAdmin') { // <-- NEW
-      navigate('/academic/dashboard');
+      redirectPath = '/change-password';
+    } else if (data.role === 'EventAdmin') {
+      redirectPath = '/admin/dashboard';
+    } else if (data.role === 'AcademicAdmin') {
+      redirectPath = '/academic/dashboard';
     } else if (data.role.includes('Organizer')) {
-      navigate('/organizer/dashboard');
+      redirectPath = '/organizer/dashboard';
     } else {
-      navigate('/'); // This is what's happening to your 'Admin' role
+      redirectPath = '/';
     }
+    
+    // 4. Defer navigation
+    setTimeout(() => {
+        navigate(redirectPath, { replace: true });
+    }, 0);
   };
 
   // --- Logout Function ---

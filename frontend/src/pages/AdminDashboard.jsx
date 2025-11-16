@@ -7,20 +7,17 @@ export default function AdminDashboard() {
   
   // --- NEW MODAL STATE ---
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState(null); // Will hold the request being approved
-  // We need to pass the token and a refresh function to the modal
+  const [selectedRequest, setSelectedRequest] = useState(null); 
   const { getToken } = useAuth();
-  const [refreshKey, setRefreshKey] = useState(0); // A simple way to trigger refresh
-  
+  const [refreshKey, setRefreshKey] = useState(0); 
   // --- END NEW MODAL STATE ---
 
-  // Tab definitions
+  // Tab definitions (RESOURCES TAB REMOVED)
   const tabs = [
     { id: 'requests', label: 'Event Requests' },
     { id: 'events', label: 'Manage Events' },
     { id: 'users', label: 'Manage Users' },
     { id: 'clubs', label: 'Manage Clubs' },
-    { id: 'resources', label: 'Manage Resources' },
   ];
   
   const handleOpenModal = (request) => {
@@ -34,7 +31,7 @@ export default function AdminDashboard() {
   };
   
   const handleApprovalSuccess = () => {
-    setRefreshKey(oldKey => oldKey + 1); // Trigger a refresh of the requests list
+    setRefreshKey(oldKey => oldKey + 1); 
     handleCloseModal();
   };
 
@@ -71,11 +68,11 @@ export default function AdminDashboard() {
           {activeTab === 'events' && <ManageEvents />}
           {activeTab === 'users' && <ManageUsers />}
           {activeTab === 'clubs' && <ManageClubs />}
-          {activeTab === 'resources' && <ManageResources />}
+          {/* ManageResources is no longer here */}
         </div>
       </div>
       
-      {/* --- NEW MODAL RENDER --- */}
+      {/* --- MODAL RENDER --- */}
       {isModalOpen && selectedRequest && (
         <ApprovalModal
           request={selectedRequest}
@@ -89,9 +86,8 @@ export default function AdminDashboard() {
 }
 
 // ===================================================================
-// TAB 1: MANAGE EVENT REQUESTS (REFACTORED)
+// TAB 1: MANAGE EVENT REQUESTS (Unchanged)
 // ===================================================================
-// Now accepts onApproveClick and refreshKey as props
 const ManageEventRequests = ({ onApproveClick, refreshKey }) => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,12 +115,10 @@ const ManageEventRequests = ({ onApproveClick, refreshKey }) => {
     }
   }, [getToken]);
 
-  // useEffect now depends on refreshKey
   useEffect(() => {
     fetchRequests();
   }, [fetchRequests, refreshKey]);
 
-  // handleApprove is now just a click handler
   const handleApprove = (request) => {
     onApproveClick(request);
   };
@@ -142,7 +136,7 @@ const ManageEventRequests = ({ onApproveClick, refreshKey }) => {
         throw new Error(errData.message || 'Failed to reject request');
       }
       alert('Request rejected.');
-      fetchRequests(); // Re-fetch on reject
+      fetchRequests(); 
     } catch (err) {
       alert(`Error: ${err.message}`);
     }
@@ -171,7 +165,6 @@ const ManageEventRequests = ({ onApproveClick, refreshKey }) => {
                   <p className="text-sm text-gray-300 mt-1">Details: {req.eventDetails || 'N/A'}</p>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
-                  {/* Updated to pass the full request object */}
                   <button onClick={() => handleApprove(req)} className="admin-button-green">Approve</button>
                   <button onClick={() => handleReject(req.id)} className="admin-button-red">Reject</button>
                 </div>
@@ -185,10 +178,9 @@ const ManageEventRequests = ({ onApproveClick, refreshKey }) => {
 };
 
 // ===================================================================
-// TAB 2: MANAGE EVENTS (Unchanged from last step)
+// TAB 2: MANAGE EVENTS (Unchanged)
 // ===================================================================
 const ManageEvents = () => {
-  // ... (Code from previous step)
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -216,9 +208,23 @@ const ManageEvents = () => {
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
-  const handleDeleteEvent = (eventId) => {
+  const handleDeleteEvent = async (eventId) => {
     if (!window.confirm("Are you sure you want to permanently delete this event and all its data?")) return;
-    alert(`Deleting event ${eventId}... (logic to be built)`);
+    try {
+      const token = getToken();
+      const res = await fetch(`http://localhost:5000/api/admin/events/${eventId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to delete event');
+      }
+      alert('Event deleted successfully.');
+      fetchEvents(); 
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
   };
   return (
     <div>
@@ -255,10 +261,9 @@ const ManageEvents = () => {
 
 
 // ===================================================================
-// TAB 3: MANAGE USERS (Unchanged from last step)
+// TAB 3: MANAGE USERS (Unchanged)
 // ===================================================================
 const ManageUsers = () => {
-  // ... (Code from previous step)
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -286,12 +291,37 @@ const ManageUsers = () => {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+  
+  const updateRole = async (userId, newRole) => {
+    try {
+      const token = getToken();
+      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}/role`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ role: newRole }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || `Failed to set role to ${newRole}`);
+      }
+      alert(`User role set to ${newRole}.`);
+      fetchUsers(); // Refresh list
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+  
   const handleRevoke = (userId) => {
-    alert(`Revoking access for user ${userId}... (logic to be built)`);
+    if (window.confirm("Are you sure you want to revoke access? This sets the role to 'Guest'.")) {
+      updateRole(userId, 'Guest');
+    }
   };
   const handleGrant = (userId) => {
-    alert(`Granting access for user ${userId}... (logic to be built)`);
+    if (window.confirm("Grant default 'Organizer' access?")) {
+      updateRole(userId, 'Organizer');
+    }
   };
+  
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-4">Manage Users</h2>
@@ -332,13 +362,13 @@ const ManageUsers = () => {
 };
 
 // ===================================================================
-// TAB 4: MANAGE CLUBS (Unchanged)
+// TAB 4: MANAGE CLUBS (Fixed for String ID)
 // ===================================================================
 const ManageClubs = () => {
-  // ... (This component code is unchanged) ...
   const [clubs, setClubs] = useState([]);
   const [loading, setLoading] = useState(true);
   const { getToken } = useAuth();
+  
   const fetchClubs = useCallback(async () => {
     try {
       setLoading(true);
@@ -347,37 +377,63 @@ const ManageClubs = () => {
       setClubs(data);
     } catch (err) { console.error(err); } finally { setLoading(false); }
   }, []);
+  
   useEffect(() => {
     fetchClubs();
   }, [fetchClubs]);
+  
   const handleCreateClub = async () => {
+    const clubId = prompt("Enter new unique Club ID (e.g., 'C001'):");
+    if (!clubId || clubId.trim() === '') return; 
+    
     const clubName = prompt("Enter new club name:");
-    const clubDescription = prompt("Enter club description:");
-    if (!clubName) return;
+    const clubDescription = prompt("Enter club description (optional):");
+    if (!clubName || clubName.trim() === '') return;
+    
     try {
       const token = getToken();
-      await fetch('http://localhost:5000/api/admin/clubs', {
+      const res = await fetch('http://localhost:5000/api/admin/clubs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ clubName, clubDescription }),
+        body: JSON.stringify({ clubId, clubName, clubDescription }), 
       });
+      
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to create club');
+      }
+      
+      alert('Club created successfully.');
       fetchClubs();
     } catch (err) {
-      alert("Error creating club");
+      alert(`Error creating club: ${err.message}`);
     }
   };
+  
   const handleDeleteClub = async (clubId) => {
-    if (!window.confirm("Are you sure you want to delete this club?")) return;
+    if (!window.confirm(`Are you sure you want to permanently delete club ${clubId} and all associated events?`)) return;
     try {
       const token = getToken();
-      alert(`Deleting club ${clubId}... (logic to be built)`);
+      const res = await fetch(`http://localhost:5000/api/admin/clubs/${clubId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to delete club');
+      }
+      
+      alert('Club deleted successfully.');
+      fetchClubs();
     } catch (err) {
-      alert("Error deleting club");
+      alert(`Error deleting club: ${err.message}`);
     }
   };
+
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-4">Manage Clubs</h2>
@@ -389,7 +445,7 @@ const ManageClubs = () => {
           {clubs.map(club => (
             <div key={club.clubId} className="bg-white/5 p-4 rounded-lg flex justify-between items-center border border-white/10">
               <div>
-                <div className="font-semibold text-lg">{club.clubName}</div>
+                <div className="font-semibold text-lg">{club.clubName} (ID: {club.clubId})</div> 
                 <div className="text-sm text-gray-400">{club.clubDescription}</div>
               </div>
               <button onClick={() => handleDeleteClub(club.clubId)} className="admin-button-red">Delete</button>
@@ -401,25 +457,15 @@ const ManageClubs = () => {
   );
 };
 
-// ===================================================================
-// TAB 5: MANAGE RESOURCES (Unchanged)
-// ===================================================================
-const ManageResources = () => {
-  // ... (This component code is unchanged)
-  return (
-    <div>
-      <h2 className="text-2xl font-semibold">Manage Resources</h2>
-      <p className="text-gray-400">
-        This section will contain the CRUD interface for Resources.
-      </p>
-    </div>
-  );
-};
-
 
 // ===================================================================
-// --- NEW MODAL COMPONENT ---
+// TAB 1: MANAGE EVENT REQUESTS (Unchanged)
+// TAB 2: MANAGE EVENTS (Unchanged)
+// TAB 3: MANAGE USERS (Unchanged)
+// TAB 4: MANAGE CLUBS (Modified above)
 // ===================================================================
+
+// --- MODAL COMPONENT (Unchanged) ---
 const ApprovalModal = ({ request, onClose, onSuccess, getToken }) => {
   const [limit, setLimit] = useState(request.requestedEventCount || 1);
   const [expiry, setExpiry] = useState('2025-12-31');
@@ -463,7 +509,7 @@ const ApprovalModal = ({ request, onClose, onSuccess, getToken }) => {
       
       const data = await res.json();
       alert(`Request approved! User account created.\nEmail: ${data.userEmail}\nTemp Password: ${data.tempPassword}`);
-      onSuccess(); // This closes the modal and refreshes the list
+      onSuccess(); 
       
     } catch (err) {
       setError(err.message);

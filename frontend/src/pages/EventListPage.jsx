@@ -39,8 +39,8 @@ export default function EventListPage() {
 
   // --- TABS (SERVER-SIDE) ---
   const tabs = [
-    { id: 'all', label: 'All Events' },
-    { id: 'fests', label: 'Fests' },
+    { id: 'all', label: 'All Events' }//,
+    //{ id: 'fests', label: 'Fests' },
   ];
 
   // --- FILTERS (CLIENT-SIDE) ---

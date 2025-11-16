@@ -50,10 +50,11 @@ export default function NeedResources() {
     // This logic creates a "cart" of items
     setCart(prevCart => {
       const newCart = { ...prevCart };
-      if (num > 0) {
+      // NOTE: We check for isNaN because typing non-numbers can break the cart entry
+      if (num > 0 && !isNaN(num)) { 
         newCart[resourceId] = num; // Add/update the item
       } else {
-        delete newCart[resourceId]; // Remove the item if quantity is 0 or less
+        delete newCart[resourceId]; // Remove the item if quantity is 0, negative, or invalid
       }
       return newCart;
     });
@@ -66,10 +67,12 @@ export default function NeedResources() {
 
     // Convert the 'cart' object into the array format our backend expects
     const items = Object.entries(cart).map(([resourceId, quantity]) => ({
-      resourceId: parseInt(resourceId, 10),
+      // FIX 1: resourceId is now a STRING (e.g., 'RSRC01'), remove parseInt()
+      resourceId: resourceId, 
       quantity,
     }));
 
+    // FIX 2: Check for valid items (items with quantity > 0 are already in the cart)
     if (items.length === 0) {
       setError('Please select at least one resource.');
       setSubmitting(false);
@@ -125,7 +128,7 @@ export default function NeedResources() {
                 className="flex justify-between items-center bg-white/5 p-4 rounded-lg border border-white/10"
               >
                 <div>
-                  <div className="font-semibold text-lg">{res.resourceName}</div>
+                  <div className="font-semibold text-lg">{res.resourceName} ({res.resourceId})</div>
                   <div className="text-sm text-gray-400">{res.category}</div>
                 </div>
                 <input 

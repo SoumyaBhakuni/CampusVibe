@@ -31,8 +31,9 @@ router.delete('/events/:id', adminDeleteEvent);
 // --- Club Management Routes ---
 router.post('/clubs', clubController.create);
 router.get('/clubs', clubController.getAll);
+router.delete('/clubs/:id', clubController.delete); // FINAL CLUB DELETE ROUTE
 
 // --- Resource Management Routes ---
-// REMOVED: Managed by AcademicAdmin now.
+// ALL RESOURCE ROUTES ARE REMOVED FROM HERE.
 
 export default router;

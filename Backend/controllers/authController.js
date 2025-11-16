@@ -10,14 +10,18 @@ const generateToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: '1d' });
 };
 
+// Backend/controllers/authController.js
+
+// ... (rest of the file remains the same)
+
 // =================================================================
-// ✅ 1. LOGIN USER
+// ✅ 1. LOGIN USER (UPDATED to return user ID)
 // =================================================================
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ where: { email } });
+    const user = await db.User.findOne({ where: { email } });
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -40,10 +44,11 @@ export const loginUser = async (req, res) => {
     }
 
     res.json({
+      id: user.id, // <--- NEW: Return the primary key ID
       email: user.email,
       role: user.role,
       mustChangePassword: user.mustChangePassword,
-      eventCreationLimit: user.eventCreationLimit, // <-- ADDED THIS LINE
+      eventCreationLimit: user.eventCreationLimit, 
       token: generateToken(user.id, user.role),
     });
 
@@ -53,6 +58,7 @@ export const loginUser = async (req, res) => {
   }
 };
 
+// ... (rest of the file remains the same)
 // =================================================================
 // ✅ 2. CREATE ORGANIZER (Internal Helper Function)
 // =================================================================

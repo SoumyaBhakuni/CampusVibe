@@ -9,7 +9,8 @@ export default function EventDashboard() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeModal, setActiveModal] = useState(null); // 'payments', 'team', 'leaderboard', 'checkin'
+  // ADDED 'edit' to activeModal states
+  const [activeModal, setActiveModal] = useState(null); // 'payments', 'team', 'leaderboard', 'checkin', 'edit'
   
   const { id } = useParams();
   const { user, getToken } = useAuth(); 
@@ -132,8 +133,9 @@ export default function EventDashboard() {
         {isOwner && (
           <div className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/10 mb-8">
             <h3 className="text-2xl font-semibold mb-4 text-purple-300">Organizer Admin Panel</h3>
-            {/* --- 1. ADDED "CHECK-IN" BUTTON --- */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+              {/* ADDED EDIT DETAILS BUTTON */}
+              <button onClick={() => setActiveModal('edit')} className="admin-button bg-purple-600/50 text-purple-300 hover:bg-purple-600/70">Edit Details</button> 
               <button onClick={() => setActiveModal('checkin')} className="admin-button bg-green-600/50 text-green-300 hover:bg-green-600/70">Check-in</button>
               <Link to={`/resources/${id}`} className="admin-button">Resources</Link>
               <button onClick={() => setActiveModal('payments')} className="admin-button">Payments</button>
@@ -209,7 +211,8 @@ export default function EventDashboard() {
         </div>
       </div>
 
-      {/* --- 2. ADDED NEW MODAL TO RENDER --- */}
+      {/* --- MODALS --- */}
+      {activeModal === 'edit' && event && <UpdateEventModal event={event} onClose={() => setActiveModal(null)} onUpdate={fetchEventAndLeaderboard} />}
       {activeModal === 'checkin' && <CheckInModal eventId={id} onClose={() => setActiveModal(null)} />}
       {activeModal === 'payments' && <VerifyPaymentsModal eventId={id} onClose={() => setActiveModal(null)} />}
       {activeModal === 'team' && <ManageTeamModal eventId={id} onClose={() => setActiveModal(null)} />}
@@ -217,6 +220,265 @@ export default function EventDashboard() {
     </div>
   );
 }
+
+// ===================================================================
+// --- GENERIC MODAL COMPONENT (Defined ONCE) ---
+// ===================================================================
+const Modal = ({ title, onClose, children }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md" onClick={onClose}>
+    <div className="bg-slate-800 w-full max-w-2xl rounded-2xl border border-purple-500/50 p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-2xl font-semibold">{title}</h3>
+        <button onClick={onClose} className="text-gray-400 hover:text-white text-3xl">&times;</button>
+      </div>
+      <div>
+        {children}
+      </div>
+    </div>
+  </div>
+);
+
+// ===================================================================
+// --- MODAL 6: UPDATE EVENT DETAILS (NEW - FULLY EDITABLE) ---
+// ===================================================================
+const UpdateEventModal = ({ event, onClose, onUpdate }) => {
+    const [clubs, setClubs] = useState([]);
+    const [parentFests, setParentFests] = useState([]); 
+    
+    const { user, getToken } = useAuth(); // Access user object to get ID
+
+    // Initialize form state with all fields
+    const [formData, setFormData] = useState({
+        eventName: event.eventName,
+        eventDesc: event.eventDesc,
+        startTime: event.startTime ? new Date(event.startTime).toISOString().slice(0, 16) : '', 
+        endTime: event.endTime ? new Date(event.endTime).toISOString().slice(0, 16) : '', 
+        venue: event.venue,
+        contactDetails: event.contactDetails?.email || '',
+        clubId: event.clubId || '',
+        
+        registrationType: event.registrationType,
+        isPaidEvent: event.isPaidEvent,
+        hasLeaderboard: event.hasLeaderboard,
+        showLeaderboardMarks: event.showLeaderboardMarks,
+        parentId: event.parentId ? event.parentId.toString() : '', 
+    });
+    
+    const [newBanner, setNewBanner] = useState(null);
+    const [newPaymentQRCodes, setNewPaymentQRCodes] = useState([]);
+
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    // Fetch clubs and ONLY the CURRENT ORGANIZER's parent fests
+    useEffect(() => {
+        const fetchData = async () => {
+            const currentOrganizerId = user?.id; // Get the ID from the new context
+            if (!currentOrganizerId) return; // Wait until user is loaded
+
+            try {
+                // 1. Fetch Clubs
+                const clubsRes = await fetch('http://localhost:5000/api/clubs');
+                if (clubsRes.ok) setClubs(await clubsRes.json());
+                
+                // 2. Fetch Parent Fests (ALL events with include=all)
+                const festsRes = await fetch('http://localhost:5000/api/events?include=all');
+                if (festsRes.ok) {
+                    const allEvents = await festsRes.json();
+                    
+                    // --- IMPLEMENT USER'S CUSTOM FILTER LOGIC HERE ---
+                    const organizerFests = allEvents.filter(e => 
+                        // Must be a top-level parent
+                        e.parentId === null && 
+                        // Must be created by the CURRENT ORGANIZER
+                        e.organizerId === currentOrganizerId && 
+                        // Must not be the event currently being edited
+                        e.id !== event.id 
+                    );
+                    setParentFests(organizerFests);
+                }
+            } catch (err) {
+                console.error("Failed to fetch dependencies", err);
+            }
+        };
+        fetchData();
+    }, [event.id, user]); // Dependency on user added
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        // Handle boolean fields correctly
+        setFormData(prev => ({ 
+            ...prev, 
+            [name]: type === 'checkbox' ? checked : value,
+        }));
+    };
+    
+    const handleFileChange = (e) => {
+        const { name, files } = e.target;
+        if (name === 'banner') {
+            setNewBanner(files[0]);
+        } else if (name === 'paymentQRCodes') {
+            setNewPaymentQRCodes(files);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+
+        try {
+            const token = getToken();
+            
+            // 1. Build the FormData payload for the PUT request
+            const data = new FormData();
+            
+            // Append all data fields
+            for (const key in formData) {
+                if (key === 'contactDetails') {
+                     data.append('contactDetails', JSON.stringify({ email: formData.contactDetails }));
+                } else if (typeof formData[key] === 'boolean') {
+                    // Send boolean flags as strings ('true'/'false') for FormData
+                    data.append(key, formData[key] ? 'true' : 'false');
+                }
+                 else {
+                    // Send ParentId as null string if empty, which the backend converts to NULL
+                    data.append(key, formData[key] || ''); 
+                }
+            }
+            
+            // Append new files if they exist
+            if (newBanner) {
+                data.append('banner', newBanner);
+            }
+            if (newPaymentQRCodes.length > 0) {
+                for (let i = 0; i < newPaymentQRCodes.length; i++) {
+                    data.append('paymentQRCodes', newPaymentQRCodes[i]);
+                }
+            }
+            
+            // 2. Call the existing PUT /api/events/:id route
+            const res = await fetch(`http://localhost:5000/api/events/${event.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: data, 
+            });
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.message || 'Failed to update event');
+            }
+
+            alert('Event updated successfully! Note: Changes to registration type may affect existing registrations.');
+            onUpdate(); 
+            onClose();
+
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Modal title={`Edit Event: ${event.eventName}`} onClose={onClose}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                {error && <div className="bg-red-500/20 text-red-300 p-3 rounded-xl mb-4">{error}</div>}
+
+                <h4 className="text-lg font-semibold border-b border-white/10 pb-2">Basic Details & Affiliation</h4>
+                <input name="eventName" value={formData.eventName} onChange={handleChange} placeholder="Event Name" className="input-field" required />
+                <textarea name="eventDesc" value={formData.eventDesc} onChange={handleChange} placeholder="Event Description" className="input-field" />
+                <input name="venue" value={formData.venue} onChange={handleChange} placeholder="Venue" className="input-field" required />
+                <input name="contactDetails" value={formData.contactDetails} type="email" onChange={handleChange} placeholder="Public Contact Email" className="input-field" required />
+
+                {/* Dates */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-gray-300 text-sm font-medium mb-2">Start Time</label>
+                        <input name="startTime" value={formData.startTime} type="datetime-local" onChange={handleChange} className="input-field" required />
+                    </div>
+                    <div>
+                        <label className="block text-gray-300 text-sm font-medium mb-2">End Time</label>
+                        <input name="endTime" value={formData.endTime} type="datetime-local" onChange={handleChange} className="input-field" required />
+                    </div>
+                </div>
+                
+                {/* Registration Type (Editable) */}
+                <div>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">Registration Type</label>
+                    <select name="registrationType" value={formData.registrationType} onChange={handleChange} className="input-field">
+                        <option value="Individual" className="bg-slate-800">Individual</option>
+                        <option value="Team" className="bg-slate-800">Team</option>
+                    </select>
+                </div>
+                
+                {/* Parent/Sub-Event Affiliation (Editable) */}
+                <div>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">Parent Fest Affiliation (Your Own Events)</label>
+                    <select name="parentId" value={formData.parentId} onChange={handleChange} className="input-field">
+                        <option value="" className="bg-slate-800">Standalone Event (No Parent)</option>
+                        {parentFests.map(p => (
+                            <option key={p.id} value={p.id} className="bg-slate-800">
+                                {p.eventName} (Parent)
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                
+                {/* Club Affiliation */}
+                <select name="clubId" value={formData.clubId} onChange={handleChange} className="input-field">
+                    <option value="" className="bg-slate-800">No associated club</option>
+                    {clubs.map(club => (
+                        <option key={club.clubId} value={club.clubId} className="bg-slate-800">{club.clubName} (ID: {club.clubId})</option>
+                    ))}
+                </select>
+                
+                <h4 className="text-lg font-semibold border-b border-white/10 pb-2 pt-4">Payment & Leaderboard</h4>
+
+                {/* Paid Event (Editable) */}
+                <label className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
+                    <input type="checkbox" name="isPaidEvent" checked={formData.isPaidEvent} onChange={handleChange} className="w-5 h-5" />
+                    Is this a paid event?
+                </label>
+                
+                {/* Leaderboard Options (Editable) */}
+                <label className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
+                    <input type="checkbox" name="hasLeaderboard" checked={formData.hasLeaderboard} onChange={handleChange} className="w-5 h-5" />
+                    Has Leaderboard?
+                </label>
+                {formData.hasLeaderboard && (
+                    <label className="flex items-center gap-3 p-3 bg-white/10 rounded-lg ml-8">
+                        <input type="checkbox" name="showLeaderboardMarks" checked={formData.showLeaderboardMarks} onChange={handleChange} className="w-5 h-5" />
+                        Show Marks Publicly?
+                    </label>
+                )}
+
+                <h4 className="text-lg font-semibold border-b border-white/10 pb-2 pt-4">File Uploads (Optional)</h4>
+                <div className="space-y-3">
+                    <div>
+                        <label className='block text-gray-300 font-medium mb-2'>Update Banner (1 image)</label>
+                        <input type="file" name="banner" onChange={handleFileChange} accept='image/*' className="input-file" />
+                        <p className="text-xs text-gray-500">Current: {event.bannerUrl ? 'Yes' : 'No'}</p>
+                    </div>
+                    {formData.isPaidEvent && (
+                        <div>
+                            <label className='block text-gray-300 font-medium mb-2'>Update Payment QR Codes</label>
+                            <input type="file" name="paymentQRCodes" onChange={handleFileChange} accept='image/*' multiple className="input-file" />
+                            <p className="text-xs text-gray-500">Current QRs: {event.paymentQRCodes.length}</p>
+                        </div>
+                    )}
+                </div>
+
+
+                <button type="submit" disabled={loading} className="admin-button-green w-full">
+                    {loading ? 'Saving Changes...' : 'Save All Updates'}
+                </button>
+            </form>
+        </Modal>
+    );
+};
 
 // ===================================================================
 // --- MODAL 1: VERIFY PAYMENTS ---
@@ -377,20 +639,17 @@ const ManageTeamModal = ({ eventId, onClose }) => {
 };
 
 // ===================================================================
-// --- MODAL 3: MANAGE LEADERBOARD (UPDATED) ---
+// --- MODAL 3: MANAGE LEADERBOARD ---
 // ===================================================================
 const ManageLeaderboardModal = ({ eventId, event, currentLeaderboard, onClose, onSave }) => {
   const [scores, setScores] = useState(currentLeaderboard); 
   const [showMarks, setShowMarks] = useState(event.showLeaderboardMarks);
   const { getToken } = useAuth(); 
   
-  // --- NEW ---
   const [competitors, setCompetitors] = useState([]); // All eligible competitors
   const [loadingCompetitors, setLoadingCompetitors] = useState(true);
   const [selectedCompetitor, setSelectedCompetitor] = useState(''); // For the dropdown
-  // --- END NEW ---
-
-  // --- NEW: Fetch all eligible competitors ---
+  
   useEffect(() => {
     const fetchCompetitors = async () => {
       setLoadingCompetitors(true);
@@ -414,7 +673,6 @@ const ManageLeaderboardModal = ({ eventId, event, currentLeaderboard, onClose, o
     };
     fetchCompetitors();
   }, [eventId, event.registrationType, getToken]);
-  // --- END NEW ---
 
   const handleScoreChange = (index, newMarks) => {
     const updatedScores = [...scores];
@@ -422,7 +680,6 @@ const ManageLeaderboardModal = ({ eventId, event, currentLeaderboard, onClose, o
     setScores(updatedScores);
   };
   
-  // --- NEW: Handler to add a competitor from the dropdown ---
   const handleAddCompetitor = () => {
     if (!selectedCompetitor) return;
     
@@ -431,14 +688,12 @@ const ManageLeaderboardModal = ({ eventId, event, currentLeaderboard, onClose, o
     );
     if (!competitor) return;
 
-    // Check if already in the list
     const competitorId = event.registrationType === 'Team' ? competitor.teamId : competitor.memberId;
     if (scores.some(s => s.competitorId === competitorId)) {
       alert("This competitor is already on the leaderboard.");
       return;
     }
 
-    // Add to the scores state
     setScores(prevScores => [
       ...prevScores,
       {
@@ -453,25 +708,20 @@ const ManageLeaderboardModal = ({ eventId, event, currentLeaderboard, onClose, o
     setSelectedCompetitor(''); // Reset dropdown
   };
   
-  // --- NEW: Get the name for the competitor ---
   const getCompetitorName = (item) => {
     if (item.competitorType === 'Team') {
-      // Find from all competitors list
       const team = competitors.find(c => c.teamId === item.competitorId);
       return team ? `${team.teamName} (Leader: ${team.TeamLeader?.name || 'N/A'})` : item.competitorId;
     } else {
-      // Find from all competitors list
       const ind = competitors.find(c => c.memberId === item.competitorId);
       return ind ? `${ind.Student?.name || 'N/A'} (${ind.Student?.studentId || item.competitorId})` : item.competitorId;
     }
   };
   
-  // --- NEW: Get options for the dropdown, filtering out those already added ---
   const availableCompetitors = competitors.filter(c => {
     const competitorId = event.registrationType === 'Team' ? c.teamId : c.memberId;
     return !scores.some(s => s.competitorId === competitorId);
   });
-  // --- END NEW ---
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -494,7 +744,6 @@ const ManageLeaderboardModal = ({ eventId, event, currentLeaderboard, onClose, o
           Show Marks/Points to Public
         </label>
         
-        {/* --- NEW: UI for adding competitors --- */}
         <hr className="border-white/10" />
         <h4 className="text-lg font-semibold">Add Competitor</h4>
         {loadingCompetitors ? <p>Loading eligible competitors...</p> : (
@@ -522,14 +771,12 @@ const ManageLeaderboardModal = ({ eventId, event, currentLeaderboard, onClose, o
           </div>
         )}
         <hr className="border-white/10" />
-        {/* --- END NEW UI --- */}
         
         <div className="space-y-2">
           <h4 className="text-lg font-semibold">Edit Scores</h4>
           {scores.length === 0 && <p className="text-gray-400">No competitors added to the leaderboard yet.</p>}
           {scores.map((item, index) => (
             <div key={item.id} className="flex justify-between items-center bg-white/10 p-3 rounded">
-              {/* --- UPDATED: Show name instead of just ID --- */}
               <label className="font-medium">{getCompetitorName(item)}</label>
               <input 
                 type="number"
@@ -541,14 +788,14 @@ const ManageLeaderboardModal = ({ eventId, event, currentLeaderboard, onClose, o
           ))}
         </div>
         
-        <button type="submit" className="admin-button-green w-full">Save Leaderboard</button>
+        <button type="submit" disabled={loadingCompetitors} className="admin-button-green w-full">Save Leaderboard</button>
       </form>
     </Modal>
   );
 };
 
 // ===================================================================
-// --- 4. NEW MODAL COMPONENT: CHECK-IN ---
+// --- MODAL 4: CHECK-IN ---
 // ===================================================================
 const CheckInModal = ({ eventId, onClose }) => {
   const [studentId, setStudentId] = useState('');
@@ -622,21 +869,3 @@ const CheckInModal = ({ eventId, onClose }) => {
     </Modal>
   );
 };
-
-
-// ===================================================================
-// --- GENERIC MODAL COMPONENT ---
-// ===================================================================
-const Modal = ({ title, onClose, children }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md" onClick={onClose}>
-    <div className="bg-slate-800 w-full max-w-2xl rounded-2xl border border-purple-500/50 p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-2xl font-semibold">{title}</h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-white text-3xl">&times;</button>
-      </div>
-      <div>
-        {children}
-      </div>
-    </div>
-  </div>
-);
