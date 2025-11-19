@@ -1,11 +1,3 @@
-You are absolutely right. That's a critical security consideration. The README.md should be a technical overview and setup guide for you and your team, not a public-facing invitation for anyone to create admin accounts on your platform.
-
-Here is the updated README.md file. It includes all the project details but removes the "Database Seeding" section. This keeps your setup process private.
-
-After the README.md, I will provide a separate set of private instructions for you (the owner) on how to use the seedAdmins.js file one time to create your own accounts.
-
-README.md (Updated Version)
-
 🎓 CampusVibe - A Full-Stack University Event Management Platform
 
 "CampusVibe" is a full-stack, role-based University Event Management Platform built from the ground up. It serves as a central, unified solution for managing the entire lifecycle of all campus events, from an initial public request to organize, to automated cleanup and data archival after an event's access period expires.
